@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nasap report</title>
+	<script src="./static/vue.min.js"></script>
+</head>
+<body>
+<div id="app">
+  <!-- navbar -->
+  <div class="top-nav">
+    <div class="top-nav-logo">
+      <div><span style="font-size: 40px;">N</span><span class="logo">ASAP</span></div>
+      <u>Nas</u><span>cent RNA data</span> <u>a</u><span>nalysis</span> <u>P</u><span>latform</span>
+    </div>
+    <div id="time"></div>
+  </div>
+
+  <div class="control">
+    <div class="left">
+      <div class="subNav">
+        <div class="part0 part" v-if="show_basic"><a href="#part0">Basic info</a></div>
+        <div class="part1 part" v-if="show_assess"><a href="#part1">Assessment</a></div>
+        <div class="part2 part" style="line-height: 30px;" v-if="show_quant"><a href="#part2">Quantification</a></div>
+        <div class="part3 part" v-if="show_pause"><a href="#part3">Pausing analysis</a></div>
+        <div class="part4 part" style="line-height: 30px;" v-if="show_network"><a href="#part4">Gene Regulatory network</a></div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!--1-->
+      <a name="part0"></a>
+      <div style="height: 6rem;"></div>
+      <div class="container" v-if="show_basic">
+        <div class="text1 text">
+          <h2>Basic info</h2>
+          <div class="title4 title">Basic info--1.Basic sample information</div>
+          <!-- detail -->
+          <!-- 就一张表格 包含输入的文件名和相应的统计值  fq的reads数  bw的base数 -->
+          <!-- 输出的重要文件 -->
+          <table border="1">
+            <tr>
+              <th>Measure</th>
+              <th>Value</th>
+            </tr>
+            <tr v-if="Read1_name">
+              <td>Read1 name</td>
+              <td> {{ Read1_name }}</td>
+            </tr>
+            <tr v-if="Read2_name">
+              <td>Read2 name</td>
+              <td> {{ Read2_name }}</td>
+            </tr>
+
+            <tr v-if="Read1_num">
+              <td>Read1 num</td>
+              <td> {{ Read1_num }}</td>
+            </tr>
+            <tr v-if="Read2_num">
+              <td>Read2 num</td>
+              <td> {{ Read2_num }}</td>
+            </tr>
+
+            <tr v-if="Read1_size">
+              <td>Read1 size</td>
+              <td> {{ Read1_size }}</td>
+            </tr>
+            <tr v-if="Read2_size">
+              <td>Read2 size</td>
+              <td> {{ Read2_size }}</td>
+            </tr>
+
+            <tr v-if="clean_read1">
+              <td>Clean read1</td>
+              <td> {{ clean_read1 }}</td>
+            </tr>
+            <tr v-if="clean_read2">
+              <td>Clean read2</td>
+              <td> {{ clean_read2 }}</td>
+            </tr>
+
+
+            <tr v-if="original_sam">
+              <td>Original sam</td>
+              <td> {{ original_sam }}</td>
+            </tr>
+
+            <tr v-if="unmapped_sam">
+              <td>Unmapped sam</td>
+              <td> {{ unmapped_sam }}</td>
+            </tr>
+
+            <tr v-if="uniquemapped_sam">
+              <td>Uniquemapped sam</td>
+              <td> {{ uniquemapped_sam }}</td>
+            </tr>
+
+            <tr v-if="forward_bw">
+              <td>Forward bw</td>
+              <td> {{ forward_bw }}</td>
+            </tr>
+
+            <tr v-if="reverse_bw">
+              <td>Reverse bw</td>
+              <td> {{ reverse_bw }}</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+
+
+      <!--2-->
+      <a name="part1"></a>
+      <div style="height: 6rem;"></div>
+      <div class="container" v-if="show_assess">
+        <div class="text1 text">
+          <h2>Assessment</h2>
+          <!-- detail -->
+          <div class="title4 title" v-if="is_server">Assessment--1.Nascent RNA reads quality</div>
+          <table border="1" v-if="is_server">
+            <tr>
+              <th>Measure</th>
+              <th>Value</th>
+            </tr>
+            <tr v-if="Reads_with_adapter">
+              <td>Reads with adapter</td>
+              <td> {{ Reads_with_adapter }}</td>
+            </tr>
+
+            <tr v-if="Uninformative_adapter_reads">
+              <td>Uninformative adapter reads</td>
+              <td> {{ Uninformative_adapter_reads }}</td>
+            </tr>
+
+            <tr v-if="Pct_uninformative_adapter_reads">
+              <td>Percent of uninformative adapter reads</td>
+              <td> {{ Pct_uninformative_adapter_reads }}</td>
+            </tr>
+
+            <tr v-if="Peak_adapter_insertion_size">
+              <td>Peak adapter insertion size</td>
+              <td> {{ Peak_adapter_insertion_size }}</td>
+            </tr>
+
+            <tr v-if="Adapter_loss_rate">
+              <td>Adapter loss rate</td>
+              <td> {{ Adapter_loss_rate }}</td>
+            </tr>
+
+            <tr v-if="Degradation_ratio">
+              <td>Degradation ratio</td>
+              <td> {{ Degradation_ratio }}</td>
+            </tr>
+
+            <tr v-if="Trimmed_reads">
+              <td>Trimmed reads</td>
+              <td> {{ Trimmed_reads }}</td>
+            </tr>
+
+            <tr v-if="Trim_loss_rate">
+              <td>Trim loss rate</td>
+              <td> {{ Trim_loss_rate }}</td>
+            </tr>
+
+            <tr v-if="Reads_with_polyX">
+              <td>Reads with polyX</td>
+              <td> {{ Reads_with_polyX }}</td>
+            </tr>
+
+            <tr v-if="Uninformative_polyX_reads">
+              <td>Uninformative polyX reads</td>
+              <td> {{ Uninformative_polyX_reads }}</td>
+            </tr>
+          </table>
+
+          <div class="title4 title" v-if="is_server">Assessment--2.Nascent RNA mapping quality</div>
+          <table border="1" v-if="is_server">
+            <tr>
+              <th>Measure</th>
+              <th>Value</th>
+            </tr>
+            <tr v-if="assign_mapped">
+              <td>assign mapped</td>
+              <td> {{ assign_mapped }}</td>
+            </tr>
+
+            <tr v-if="NRF">
+              <td>NRF</td>
+              <td> {{ NRF }}</td>
+            </tr>
+
+            <tr v-if="PBC1">
+              <td>PBC1</td>
+              <td> {{ PBC1 }}</td>
+            </tr>
+
+            <tr v-if="PBC2">
+              <td>PBC2</td>
+              <td> {{ PBC2 }}</td>
+            </tr>
+
+            <tr v-if="chrM_mapped">
+              <td>chrM_mapped</td>
+              <td> {{ chrM_mapped }}</td>
+            </tr>
+          </table>
+
+          <div class="title4 title" v-if="is_server">Assessment--3.Adapter insertion_distribution</div>
+          <img :src="img_adapter_distribution" />
+
+          <div class="title4 title" v-if="is_server">Assessment--4.Reads distribution</div>
+          <img :src="img_reads_distribution" />
+
+          <div class="title4 title" v-if="is_server">Assessment--5.Reads ratio</div>
+          <img :src="img_reads_ratio" />
+
+          <div class="title4 title" v-if="is_server">Assessment--6.Split mapping results</div>
+          <img :src="img_mapping_split" />
+
+          <p v-if="is_server"></p>
+          <p v-else>For bigwig files, we only provide exon/intron ratio as assessment. For more QC information, please use our python package nasap (https://pypi.org/project/nasap/). Thanks so much.</p>
+
+          <div class="title4 title" v-if="is_server">Assessment--7.Exon/Intron ratio on Protein-coding genes</div>
+          <div class="title4 title" v-else>Assessment--Exon/Intron ratio on Protein-coding genes</div>
+          <img :src="img_exon_intron_ratio" />
+        </div>
+      </div>
+
+
+      <!--3-->
+      <a name="part2"></a>
+      <div style="height: 6rem;"></div>
+      <div class="container2" v-if="show_quant">
+        <div class="text2 text">
+          <h2>Nacent RNA expression</h2>
+          <!-- detail -->
+          <div class="title4 title">Nacent RNA expression--1.Expression output files</div>
+          <table border="1">
+            <tr>
+              <th>Measure</th>
+              <th>Value</th>
+            </tr>
+            <tr v-if="all_feature_attrs_csv">
+              <td>all feature attrs</td>
+              <td> {{ all_feature_attrs_csv }}</td>
+            </tr>
+
+            <tr v-if="exon_intron_ratio_csv">
+              <td>exon intron ratio</td>
+              <td> {{ exon_intron_ratio_csv }}</td>
+            </tr>
+            <tr v-if="lincRNA_baseCount_csv">
+              <td>lincRNA baseCount</td>
+              <td> {{ lincRNA_baseCount_csv }}</td>
+            </tr>
+
+            <tr v-if="lincRNA_gb_count_csv">
+              <td>lincRNA gene body count</td>
+              <td> {{ lincRNA_gb_count_csv }}</td>
+            </tr>
+
+
+            <tr v-if="lincRNA_pp_count_csv">
+              <td>lincRNA proximal promoter count</td>
+              <td> {{ lincRNA_pp_count_csv }}</td>
+            </tr>
+            <tr v-if="lincRNA_rpkm_csv">
+              <td>lincRNA rpkm</td>
+              <td> {{ lincRNA_rpkm_csv }}</td>
+            </tr>
+            <tr v-if="protein_coding_baseCount_csv">
+              <td>protein coding baseCount</td>
+              <td> {{ protein_coding_baseCount_csv }}</td>
+            </tr>
+
+
+            <tr v-if="protein_coding_gb_count_csv">
+              <td>protein coding gb count</td>
+              <td> {{ protein_coding_gb_count_csv }}</td>
+            </tr>
+
+
+            <tr v-if="protein_coding_pp_count_csv">
+              <td>protein coding pp count</td>
+              <td> {{ protein_coding_pp_count_csv }}</td>
+            </tr>
+            <tr v-if="protein_coding_rpkm_csv">
+              <td>protein coding rpkm</td>
+              <td> {{ protein_coding_rpkm_csv }}</td>
+            </tr>
+          </table>
+
+          <div class="title4 title">Nacent RNA expression--2.Gene expression on different chromosomes</div>
+          <img :src="img_chr_rpkm" />
+        </div>
+      </div>
+
+
+      <!--4-->
+      <a name="part3"></a>
+      <div style="height: 6rem;"></div>
+      <div class="container" v-if="show_pause">
+        <div class="text3 text">
+          <h2>Pausing analysis</h2>
+
+          <!-- detail -->
+          <div class="title4 title">Pausing analysis--1.pausing analysis results table </div>
+          <table border="1">
+            <tr>
+              <th>Measure</th>
+              <th>Value</th>
+            </tr>
+            <tr v-if="pausing_sites_bed">
+              <td>pausing sites</td>
+              <td> {{ pausing_sites_bed }}</td>
+            </tr>
+            <tr v-if="pausing_sites_bed">
+              <td>pausing sites</td>
+              <td> {{ pausing_sites_bed }}</td>
+            </tr>
+            <tr v-if="lincRNA_ei_csv">
+              <td>lincRNA ei</td>
+              <td> {{ lincRNA_ei_csv }}</td>
+            </tr>
+            <tr v-if="lincRNA_pi_csv">
+              <td>lincRNA pi</td>
+              <td> {{ lincRNA_pi_csv }}</td>
+            </tr>
+            <tr v-if="protein_coding_ei_csv">
+              <td>protein coding ei</td>
+              <td> {{ protein_coding_ei_csv }}</td>
+            </tr>
+            <tr v-if="protein_coding_pi_csv">
+              <td>protein coding pi</td>
+              <td> {{ protein_coding_pi_csv }}</td>
+            </tr>
+          </table>
+          <div class="title4 title">Pausing analysis--2.Pausing sites distribution on different chromosomes</div>
+          <img :src="img_pause_sites" />
+        </div>
+      </div>
+
+      <!--5-->
+      <a name="part4"></a>
+      <div style="height: 6rem;"></div>
+      <div class="container2" v-if="show_network">
+        <div class="text4 text">
+          <h2>Gene regulatory network</h2>
+          <div class="title4 title">Gene regulatory network--1 In-degree distribution</div>
+          <img :src="img_network_degree" />
+
+          <div class="title4 title">Gene regulatory network--2 Motif distribution</div>
+          <img :src="img_network_motif" />
+
+          <div class="title4 title">Gene regulatory network--3 Community analysis</div>
+          <p>All identifying communities can be found at txt directory </p>
+          <div v-for="community_name in community_list" v-if="community_list">
+            <span>{{ community_name }}</span>
+            <span><a :href="gender_html(community_name)" class="css-txtlink-1"> interactive html</a></span>
+            <img :src="gender_img(community_name)" />
+
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+</body>
+
+<style>
+  *{
+    padding: 0;
+    margin: 0;
+  }
+  body{
+    background: #eeeeee;
+  }
+  .top-nav {
+    width: 100%;
+    overflow: hidden;
+    background: grey;
+    position: fixed;
+		z-index: 9999;
+    top: 0;
+  }
+  .logo{
+    width: 30%;
+    font-size: 60px;
+    text-shadow: 5px 5px 5px black, 0px 0px 2px black;
+    color: rgb(129, 193, 236);
+    text-align: left;
+  }
+
+  .control{
+    width: 1075px;
+    height: auto;
+    margin: 0 auto;
+  }
+  .left,.content{
+    height: auto;
+    margin: 140px 5px;
+  }
+  .left{
+    width: 200px;
+    display: inline-block;
+    vertical-align: top;
+
+  }
+  .subNav{
+    height: auto;
+    background-color: white;
+    padding: 10px;
+    width: 180px;
+    position: fixed;
+		z-index: 9999;
+  }
+  .content{
+    width: 850px;
+    background-color: white;
+    display: inline-block;
+  }
+  .part{
+    text-align: center;
+    line-height: 60px;
+    border-bottom: 1px solid #d9d9d9;
+    border-radius: 5px;
+    color: #000000;
+  }
+  .subNav a{
+    text-decoration: none;
+    color:black;
+    display: block;
+  }
+	.subNav a:hover {
+    color:#FFFFFF;
+    text-decoration:none;
+  }
+
+  .css-txtlink-1:hover {
+    color: #008CBA;
+    border-bottom: 2px solid #008CBA;
+  }
+
+  .part:hover{
+    background: #eeeeee;
+    cursor: pointer;
+  }
+  .part4{
+    border: none;
+  }
+  .text{
+    line-height: 30px;
+    width: 80%;
+    margin: 25px auto;
+    height: auto;
+  }
+  .title4{
+    font-weight: bold;
+  }
+
+	.container {
+		margin-top: 2rem;
+	}
+  .container2{
+    background: #e5e5e5;
+		overflow: hidden;
+  }
+  .title{
+    line-height: 40px;
+  }
+
+  table{
+    margin-top: 15px;
+    border-collapse: collapse;
+    border: 1px solid #aaa;
+    width: 100%;
+    text-align: left;
+    text-indent: initial;
+    border-spacing: 2px;
+	}
+  table tr {
+    display: table-row;
+    vertical-align: inherit;
+  }
+  table tr:nth-child(even) {
+    background-color: #f2f2f2;
+  }
+  table th {
+    vertical-align: baseline;
+    padding: 10px 10px 10px 10px;
+    background-color: #3F3F3F;
+    border: 1px solid #3F3F3F;
+    text-align: left;
+    color: #fff;
+    font-weight: bold;
+  }
+  table td {
+    vertical-align: text-top;
+    padding: 9px 9px 9px 9px;
+    border: 1px solid #aaa;
+  }
+
+	img{
+    max-width: 100%;
+	}
+	.main-svg {
+		width: 100%;
+		max-width: 100%;
+		z-index: 0;
+	}
+	.main-svg svg {
+		width: 100%;
+		max-width: 100%;
+	}
+	.main-svg .bglayer {
+		width: 100%;
+		max-width: 100%;
+	}
+	.main-svg .bglayer .bg{
+		width: 100%;
+		max-width: 100%;
+	}
+	.draglayer{
+		width: 100%;
+		max-width: 100%;
+	}
+	.cursor-crosshair {
+		width: 100%;
+		max-width: 100%;
+	}
+</style>
+<script type="text/javascript" language="javascript">// <![CDATA[
+	window.onload=function (){
+	setInterval("document.getElementById('time').innerHTML=new Date().toLocaleString()+' '+['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'][new Date().getDay()];",1000);
+	}
+	// ]]>
+</script>
+<script>
+  new Vue({
+    el: '#app',
+    computed: {
+      gender_img(){
+        return(v)=>{
+          return 'imgs/' +  v + '.png'
+        }
+      },
+      gender_html(){
+        return(v)=>{
+          return 'html/' + v + '.html'
+        }
+      }
+    },
+    data:{'replace':'here'}
+  })
+
+</script>
+</html>

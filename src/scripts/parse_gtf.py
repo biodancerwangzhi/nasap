@@ -1,6 +1,19 @@
+import re
+
 import pandas as pd
 from collections import defaultdict
 import itertools
+
+def sort_chr_list( chr_list ):
+  sort_chr_list = [chrom for chrom in chr_list if re.match( r'chr\d+$', chrom)]
+  sort_chr_list.sort(key=lambda arr: (arr[:3], int(arr[3:])))
+  if 'chrM' in chr_list:  sort_chr_list.append('chrM')
+  if 'chrMT' in chr_list:  sort_chr_list.append('chrMT')
+  if 'chrX' in chr_list:  sort_chr_list.append('chrX')
+  if 'chrY' in chr_list:  sort_chr_list.append('chrY')
+  return sort_chr_list
+
+
 
 def get_gene_df( gtf ):
   feature_list = []

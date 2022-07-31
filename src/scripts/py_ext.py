@@ -1,6 +1,11 @@
 import os, sys, json, shutil, subprocess, multiprocessing
 from shutil import which
 
+def get_file_size( filePath ):
+  fsize = os.path.getsize(filePath)
+  fsize = fsize/float(1024*1024)
+  return str(round(fsize,2) ) + 'Mb'
+
 def wc_count(file_name):
   out = subprocess.getoutput("wc -l %s" % file_name)
   return int(out.split()[0])

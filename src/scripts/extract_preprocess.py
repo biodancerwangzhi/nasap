@@ -8,7 +8,7 @@ script_dir = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
 lib_dir = os.path.abspath(os.path.join(os.path.abspath(__file__), '../../libs') )
 sys.path.append(lib_dir)
 
-from py_ext import json2dic
+from py_ext import json2dic, get_file_size
 
 output_root = sys.argv[1]
 if not output_root.endswith('/'): output_root = output_root +'/'
@@ -56,10 +56,20 @@ def parse_fastp_json(json_dir):
     para_dic['polyx_trimmed_reads'] = fastp_dic['polyx_trimming']['total_polyx_trimmed_reads']
   return para_dic
 
+
 # 0 get variable
 tmp_variable_dir = output_root+"tmp_variable.txt"
 variable_dic = {ln.split('--')[0]: ln.split('--')[1].strip() for ln in open(tmp_variable_dir)}
+stats_list.append( ['Read1_name', os.path.basename(variable_dic['read1_name'])] )
 stats_list.append( ['Read1_num', variable_dic['read1_num']] )
+stats_list.append( ['Read1_size',get_file_size(variable_dic['read1_name'])] )
+try:
+  stats_list.append( ['Read2_name', os.path.basename(variable_dic['read2_name'])] )
+  stats_list.append( ['Read2_num', variable_dic['read2_num']] )
+  stats_list.append( ['Read2_size',get_file_size(variable_dic['read2_name'])] )
+except:
+  pass
+
 stats_list.append( ['Reads_with_adapter', variable_dic['reads_with_adapter']] )
 stats_list.append( ['Uninformative_adapter_reads', variable_dic['uninformative_adapter_reads']] )
 stats_list.append( ['Pct_uninformative_adapter_reads', variable_dic['pct_uninformative_adapter_reads']] )
@@ -239,8 +249,8 @@ def draw_readsNum(steps, stackbar_list):
       plt.text(x1, y1 + y2 + (y3)* 0.4, '{:.0%}'.format(p3), ha='center',fontsize = 15)
 
   # plt.show()
-  plt.savefig(output_root +'imgs/reads_distribution.png')
-  plt.savefig(output_root +'imgs/reads_distribution.pdf')
+  plt.savefig(output_root +'imgs/reads_ratio.png')
+  plt.savefig(output_root +'imgs/reads_ratio.pdf')
 
 steps=['raw reads', 'remove adapter', 'trim two ends', 'remove polyX', 'filter quality']
 draw_readsNum(steps, stackbar_list)
@@ -276,8 +286,8 @@ def readsLength_dist_subplots(steps, bar_list, text_list): #
   plt.xlabel('Reads length')
   plt.yscale("log")
   # plt.show()
-  plt.savefig(output_root + 'imgs/reads_distribution_after_preprocess.png')
-  plt.savefig(output_root + 'imgs/reads_distribution_after_preprocess.pdf')
+  plt.savefig(output_root + 'imgs/reads_distribution.png')
+  plt.savefig(output_root + 'imgs/reads_distribution.pdf')
 
 readsLength_dist_subplots(steps, bar_list, [annotate_text1, annotate_text2, annotate_text3, annotate_text4, annotate_text5])
 

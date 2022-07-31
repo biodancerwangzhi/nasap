@@ -1,8 +1,9 @@
-import os, fire
+import os, fire, re
 import pandas as pd
 import pyBigWig
 
 import sys
+from scipy import stats
 
 # sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))+ '/libs')
 script_dir = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
@@ -14,6 +15,7 @@ sys.path.append(lib_dir)
 
 from py_ext import json2dic, dic2json, read_tmp_variable
 from parse_gtf import get_gene_df, get_gene_merge_exon_dic, gene_df2dic
+from plot import boxplot, scatterplot
 
 def get_total_bases(forward_bw, reverse_bw):
   return pyBigWig.open(forward_bw).header()['sumData'] + pyBigWig.open(reverse_bw).header()['sumData']
@@ -82,7 +84,7 @@ def get_attrs(gene_range_dic, forward_bw, reverse_bw, total_bases):
   return gene_rpkm_dic, gene_baseCount_dic, gene_pi_dic, gene_ei_dic, gene_pp_count_dic, gene_gb_count_dic
 
 # count, RPKM, PI, EI, Exon/intron density
-def main(gtf, forward_bw, reverse_bw, output_root='./tmp_output/' ):
+def main(gtf, forward_bw, reverse_bw, output_root ):
   total_bases = get_total_bases(forward_bw, reverse_bw)
 
   gene_df = get_gene_df( gtf )
@@ -92,11 +94,46 @@ def main(gtf, forward_bw, reverse_bw, output_root='./tmp_output/' ):
 
   gene_rpkm_dic, gene_baseCount_dic, gene_pi_dic, gene_ei_dic, gene_pp_count_dic, gene_gb_count_dic = get_attrs(gene_range_dic, forward_bw, reverse_bw, total_bases)
   # print( list(gene_rpkm_dic.items())[:5] )
+
+  attr_list = ['baseCount', 'rpkm', 'pp_count', 'gb_count', 'pi', 'ei']
+  for gene_type in set(filter_gene_df['genetype']):
+    gene_list = filter_gene_df[filter_gene_df['genetype'] == gene_type]['gene_name']
+    for attr in attr_list:
+      # type_attr_dic = {g: globals()['gene_' + attr +'_dic'][g] for g in gene_list}
+      tmp_dic = eval('gene_' + attr +'_dic')
+      tmp_list = list( tmp_dic.keys() )
+      type_attr_dic = {g: tmp_dic[g] for g in gene_list if g in tmp_list}
+      pd.DataFrame( {attr: pd.Series(type_attr_dic)} ).to_csv(output_root+'csv/' + gene_type + '_'+ attr + '.csv')
+
+
   gene_attrs_df = pd.concat({'rpkm':pd.Series(gene_rpkm_dic), 'count': pd.Series(gene_baseCount_dic),
    'pp_count': pd.Series(gene_pp_count_dic), 'gb_count': pd.Series(gene_gb_count_dic),
    'pi': pd.Series(gene_pi_dic), 'ei': pd.Series(gene_ei_dic)}, axis=1)
 
-  gene_attrs_df.to_csv(output_root+'csv/feature_attrs.csv')
+  gene_attrs_df.to_csv(output_root+'csv/all_feature_attrs.csv')
+
+  chr_list = list( set( filter_gene_df['chrom'] ) )
+
+  sort_chr_list = [chrom for chrom in chr_list if re.match( r'chr\d+', chrom)]
+  sort_chr_list.sort(key=lambda arr: (arr[:3], int(arr[3:])))
+  if 'chrM' in chr_list:  sort_chr_list.append('chrM')
+  if 'chrMT' in chr_list:  sort_chr_list.append('chrMT')
+  if 'chrX' in chr_list:  sort_chr_list.append('chrX')
+  if 'chrY' in chr_list:  sort_chr_list.append('chrY')
+  rpkm_list = []
+  for chrom in sort_chr_list:
+    gene_list = filter_gene_df[ filter_gene_df['chrom'] == chrom ]['gene_name']
+
+    cur_rpkm_list = []
+    for gene in gene_list:
+      try:
+        cur_rpkm_list.append(gene_rpkm_dic[gene])
+      except:
+        continue
+    rpkm_list.append( cur_rpkm_list )
+  boxplot(rpkm_list, 'chromsome genes RPKM', 'chromsome', 'RPKM', sort_chr_list, output_root + 'imgs/chr_rpkm.png' )
+
+
 
   # Exon/Intron
   protein_exon_range_dic = get_gene_merge_exon_dic(gtf)
@@ -142,7 +179,15 @@ def main(gtf, forward_bw, reverse_bw, output_root='./tmp_output/' ):
     exon_intron_ratio_dic[gene_name] = {'exon': exon_density, 'intron': intron_density, 'ratio': ratio}
 
   exon_intron_df = pd.DataFrame(exon_intron_ratio_dic)
-  exon_intron_df.T.to_csv(output_root+'csv/exon_intron_ratio.csv')
+  exon_intron_df = exon_intron_df.T
+  exon_intron_df.to_csv(output_root+'csv/exon_intron_ratio.csv')
+
+  filter_exon_intron_df = exon_intron_df[(exon_intron_df['exon'] > 0) & (exon_intron_df['intron'] >0) ]
+
+
+  slope, intercept, r_value, p_value, std_err = stats.linregress(filter_exon_intron_df['exon'],filter_exon_intron_df['intron'])
+  text= 'y = {:4.2e} x + {:4.2e}; \nR^2= {:2.2f}'.format(slope, intercept, r_value*r_value)
+  scatterplot( filter_exon_intron_df['exon'], filter_exon_intron_df['intron'], 'Exon/Intron ratio', 'Exon', 'Intron', text, output_root+'imgs/exon_intron_ratio.png' )
 
 if __name__ == '__main__':
-  fire.Fire( main ) # pipeline )
+  fire.Fire( main )

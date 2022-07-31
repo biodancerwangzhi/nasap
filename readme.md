@@ -4,6 +4,19 @@ Quality Assessment and Comprehensive Analyses of Nascent RNA Profiling Datasets
 ## Install 
 ```bash
 pip install nasap
+```  
+
+## Install from source code  
+```bash 
+git clone biodancer/nasap  
+
+python setup.py install 
+
+```
+
+## Test package installed 
+```bash 
+nasap --help 
 ```
 
 ## Usage 

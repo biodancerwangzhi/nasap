@@ -1,0 +1,62 @@
+[spacer]
+height = 0.05
+
+#show-enhancer
+[enhancer]
+file = $enhancer
+title = enhancer links
+line_width = 1
+height =2
+color = green
+file_type = links
+#
+
+#show-tf
+[tf]
+file = $tf
+title = tf links
+line_width = 3
+height =2
+color = pink
+file_type = links
+#
+
+#
+
+[gtf]
+file = $gtf
+title = $specie genes
+height = 2
+color = darkblue
+height = 5
+labels = false
+fontsize = 10
+file_type = gtf
+
+
+
+[forward]
+file = $forward
+title = forward signal
+height = 2
+color = blue
+min_value = 0
+number_of_bins = 700
+nans_to_zeros = true
+summary_method = mean
+show_data_range = true
+file_type = bigwig
+
+[reverse]
+file = $reverse
+title = reverse signal
+height = 2
+color = red
+min_value = 0
+number_of_bins = 700
+nans_to_zeros = true
+summary_method = mean
+show_data_range = true
+file_type = bigwig
+orientation = inverted
+
