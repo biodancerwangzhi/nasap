@@ -6,13 +6,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Nasap report</title>
 	<script src="./static/vue.min.js"></script>
+  <style>
+    .card {
+      /* 修改背景色 */
+      background-color: white;
+      /* 增加边框 */
+      border: 1px solid #bacdd8;
+      /* 在边框和内容之间添加空白区域 */
+      padding: 2px;
+      border-radius: 12px;
+      margin-top: 10px;
+    }
+    small {
+      font-size: 14px;
+      color: #264ee4;
+      text-transform: uppercase;
+    }
+  </style>
 </head>
 <body>
 <div id="app">
   <!-- navbar -->
   <div class="top-nav">
     <div class="top-nav-logo">
-      <div><span style="font-size: 40px;">N</span><span class="logo">ASAP</span></div>
+      <div><span style="font-size: 40px;">n</span><span class="logo">ASAP</span></div>
       <u>Nas</u><span>cent RNA data</span> <u>a</u><span>nalysis</span> <u>P</u><span>latform</span>
     </div>
     <div id="time"></div>
@@ -30,7 +47,7 @@
     </div>
 
     <div class="content">
-      <!--1-->
+      <!--1 input info-->
       <a name="part0"></a>
       <div style="height: 6rem;"></div>
       <div class="container" v-if="show_basic">
@@ -41,264 +58,181 @@
           <!-- 就一张表格 包含输入的文件名和相应的统计值  fq的reads数  bw的base数 -->
           <!-- 输出的重要文件 -->
           <table border="1">
-            <tr>
-              <th>Measure</th>
-              <th>Value</th>
-            </tr>
-            <tr v-if="Read1_name">
-              <td>Read1 name</td>
-              <td> {{ Read1_name }}</td>
-            </tr>
-            <tr v-if="Read2_name">
-              <td>Read2 name</td>
-              <td> {{ Read2_name }}</td>
-            </tr>
+            <tr><th>Measure</th><th>Value</th></tr>
+            <tr v-if="Read1_name"><td>Read1 name</td><td> {{ Read1_name }}</td></tr>
+            <tr v-if="Read2_name"><td>Read2 name</td><td> {{ Read2_name }}</td></tr>
 
-            <tr v-if="Read1_num">
-              <td>Read1 num</td>
-              <td> {{ Read1_num }}</td>
-            </tr>
-            <tr v-if="Read2_num">
-              <td>Read2 num</td>
-              <td> {{ Read2_num }}</td>
-            </tr>
+            <tr v-if="Read1_num"><td>Read1 num</td><td> {{ Read1_num }}</td></tr>
+            <tr v-if="Read2_num"><td>Read2 num</td><td> {{ Read2_num }}</td></tr>
 
-            <tr v-if="Read1_size">
-              <td>Read1 size</td>
-              <td> {{ Read1_size }}</td>
-            </tr>
-            <tr v-if="Read2_size">
-              <td>Read2 size</td>
-              <td> {{ Read2_size }}</td>
-            </tr>
+            <tr v-if="Read1_size"><td>Read1 size</td><td> {{ Read1_size }}</td></tr>
+            <tr v-if="Read2_size"><td>Read2 size</td><td> {{ Read2_size }}</td></tr>
 
-            <tr v-if="clean_read1">
-              <td>Clean read1</td>
-              <td> {{ clean_read1 }}</td>
-            </tr>
-            <tr v-if="clean_read2">
-              <td>Clean read2</td>
-              <td> {{ clean_read2 }}</td>
-            </tr>
+            <tr v-if="clean_read1"><td>Clean read1</td><td> {{ clean_read1 }}</td></tr>
+            <tr v-if="clean_read2"><td>Clean read2</td><td> {{ clean_read2 }}</td></tr>
 
+            <tr v-if="original_sam"><td>Original sam</td><td> {{ original_sam }}</td></tr>
 
-            <tr v-if="original_sam">
-              <td>Original sam</td>
-              <td> {{ original_sam }}</td>
-            </tr>
+            <tr v-if="unmapped_sam"><td>Unmapped sam</td><td> {{ unmapped_sam }}</td></tr>
 
-            <tr v-if="unmapped_sam">
-              <td>Unmapped sam</td>
-              <td> {{ unmapped_sam }}</td>
-            </tr>
+            <tr v-if="uniquemapped_sam"><td>Uniquemapped sam</td><td> {{ uniquemapped_sam }}</td></tr>
 
-            <tr v-if="uniquemapped_sam">
-              <td>Uniquemapped sam</td>
-              <td> {{ uniquemapped_sam }}</td>
-            </tr>
+            <tr v-if="forward_bw"><td>Forward bw</td><td> {{ forward_bw }}</td></tr>
 
-            <tr v-if="forward_bw">
-              <td>Forward bw</td>
-              <td> {{ forward_bw }}</td>
-            </tr>
-
-            <tr v-if="reverse_bw">
-              <td>Reverse bw</td>
-              <td> {{ reverse_bw }}</td>
-            </tr>
+            <tr v-if="reverse_bw"><td>Reverse bw</td><td> {{ reverse_bw }}</td></tr>
           </table>
         </div>
       </div>
 
 
-      <!--2-->
+      <!--2 assessement-->
       <a name="part1"></a>
       <div style="height: 6rem;"></div>
       <div class="container" v-if="show_assess">
         <div class="text1 text">
           <h2>Assessment</h2>
           <!-- detail -->
-          <div class="title4 title" v-if="is_server">Assessment--1.Nascent RNA reads quality</div>
+          <div class="title4 title" v-if="is_server">Assessment--1.adapter ratio</div>
           <table border="1" v-if="is_server">
-            <tr>
-              <th>Measure</th>
-              <th>Value</th>
-            </tr>
-            <tr v-if="Reads_with_adapter">
-              <td>Reads with adapter</td>
-              <td> {{ Reads_with_adapter }}</td>
-            </tr>
-
-            <tr v-if="Uninformative_adapter_reads">
-              <td>Uninformative adapter reads</td>
-              <td> {{ Uninformative_adapter_reads }}</td>
-            </tr>
-
-            <tr v-if="Pct_uninformative_adapter_reads">
-              <td>Percent of uninformative adapter reads</td>
-              <td> {{ Pct_uninformative_adapter_reads }}</td>
-            </tr>
-
-            <tr v-if="Peak_adapter_insertion_size">
-              <td>Peak adapter insertion size</td>
-              <td> {{ Peak_adapter_insertion_size }}</td>
-            </tr>
-
-            <tr v-if="Adapter_loss_rate">
-              <td>Adapter loss rate</td>
-              <td> {{ Adapter_loss_rate }}</td>
-            </tr>
-
-            <tr v-if="Degradation_ratio">
-              <td>Degradation ratio</td>
-              <td> {{ Degradation_ratio }}</td>
-            </tr>
-
-            <tr v-if="Trimmed_reads">
-              <td>Trimmed reads</td>
-              <td> {{ Trimmed_reads }}</td>
-            </tr>
-
-            <tr v-if="Trim_loss_rate">
-              <td>Trim loss rate</td>
-              <td> {{ Trim_loss_rate }}</td>
-            </tr>
-
-            <tr v-if="Reads_with_polyX">
-              <td>Reads with polyX</td>
-              <td> {{ Reads_with_polyX }}</td>
-            </tr>
-
-            <tr v-if="Uninformative_polyX_reads">
-              <td>Uninformative polyX reads</td>
-              <td> {{ Uninformative_polyX_reads }}</td>
-            </tr>
+            <tr><th>Measure</th><th>Value</th><th>Recommend</th></tr>
+            <tr v-if="Reads_with_adapter"><td>Reads with adapter</td><td> {{ Reads_with_adapter }}</td><td>-</td></tr>
+            <tr v-if="Uninformative_adapter_reads"><td>Uninformative adapter reads</td><td> {{ Uninformative_adapter_reads }}</td><td>-</td></tr>
+            <tr v-if="Pct_uninformative_adapter_reads"><td>Percent of uninformative adapter reads</td><td> {{ Pct_uninformative_adapter_reads }}%</td><td>&lt;5%</td></tr>
+            <tr v-if="Peak_adapter_insertion_size"><td>Peak adapter insertion size</td><td> {{ Peak_adapter_insertion_size }}</td><td>-</td></tr>
+            <tr v-if="Adapter_loss_rate"><td>Adapter loss rate</td><td> {{ Adapter_loss_rate }}%</td><td>&lt;5%</td></tr>
           </table>
 
-          <div class="title4 title" v-if="is_server">Assessment--2.Nascent RNA mapping quality</div>
+          <div class="title4 title" v-if="is_server">Assessment--2.RNA intergrity</div>
           <table border="1" v-if="is_server">
-            <tr>
-              <th>Measure</th>
-              <th>Value</th>
-            </tr>
-            <tr v-if="assign_mapped">
-              <td>assign mapped</td>
-              <td> {{ assign_mapped }}</td>
-            </tr>
-
-            <tr v-if="NRF">
-              <td>NRF</td>
-              <td> {{ NRF }}</td>
-            </tr>
-
-            <tr v-if="PBC1">
-              <td>PBC1</td>
-              <td> {{ PBC1 }}</td>
-            </tr>
-
-            <tr v-if="PBC2">
-              <td>PBC2</td>
-              <td> {{ PBC2 }}</td>
-            </tr>
-
-            <tr v-if="chrM_mapped">
-              <td>chrM_mapped</td>
-              <td> {{ chrM_mapped }}</td>
-            </tr>
+            <tr><th>Measure</th><th>Value</th><th>Recommend</th></tr>
+            <tr v-if="Degradation_ratio"><td>Degradation ratio</td><td> {{ Degradation_ratio }}%</td><td> &lt;1</td></tr>
           </table>
 
-          <div class="title4 title" v-if="is_server">Assessment--3.Adapter insertion_distribution</div>
-          <img :src="img_adapter_distribution" />
+          <div class="card" v-if="img_adapter_distribution">
+            <img :src="img_adapter_distribution" />
+            <small>RNA insert sizes distribution plot</small>
+            <p>Insert sizes below 20 nucleotides in the read length distribution indicates bad quality samples with degraded or poor RNA quality reads. The plot assessed the RNA intergrity with RNA insert sizes distribution.</p>
+          </div>
 
-          <div class="title4 title" v-if="is_server">Assessment--4.Reads distribution</div>
-          <img :src="img_reads_distribution" />
+          <div class="card" v-if="img_reads_distribution">
+            <img :src="img_reads_distribution" />
+            <small>Reads length distribution plot</small>
+            <p>The plot provides a detailed description of the nascent RNA reads length distribution in each preprocess steps.</p>
+          </div>
 
-          <div class="title4 title" v-if="is_server">Assessment--5.Reads ratio</div>
-          <img :src="img_reads_ratio" />
+          <div class="card" v-if="img_reads_ratio">
+            <img :src="img_reads_ratio" />
+            <small>Preprocess summary stack plot</small>
+            <p>The plot summarises the nascent RNA reads length distribution in each preprocess steps.</p>
+          </div>
 
-          <div class="title4 title" v-if="is_server">Assessment--6.Split mapping results</div>
-          <img :src="img_mapping_split" />
+          <div class="title4 title" v-if="is_server">Assessment--3.Library complexity</div>
+          <table border="1" v-if="is_server">
+            <tr><th>Measure</th><th>Value</th><th>Recommend</th></tr>
+            <tr v-if="NRF"><td>NRF</td><td> {{ NRF }}</td><td>0.5 &lt; NRF &lt; 0.8</td></tr>
+            <tr v-if="PBC1"><td>PBC1</td><td> {{ PBC1 }}</td><td>0.5 &lt; PBC1 &lt; 0.8</td></tr>
+            <tr v-if="PBC2"><td>PBC2</td><td> {{ PBC2 }}</td><td>1 &lt; PBC2 &lt; 3</td></tr>
+          </table>
 
-          <p v-if="is_server"></p>
-          <p v-else>For bigwig files, we only provide exon/intron ratio as assessment. For more QC information, please use our python package nasap (https://pypi.org/project/nasap/). Thanks so much.</p>
+          <div class="title4 title" v-if="is_server">Assessment--4.QC trend</div>
+          <div class="card" v-if="img_quality_trend">
+            <img :src="img_quality_trend" />
+            <small>Sequencing quality score plot</small>
+            <p>Sequencing quality is evaluated with the percentage of bases with the quality score greater than 20 (Q20) and greater than 30 (Q30). The plot compares the nascent RNA reads quality scores in each preprocess steps.</p>
+          </div>
 
-          <div class="title4 title" v-if="is_server">Assessment--7.Exon/Intron ratio on Protein-coding genes</div>
-          <div class="title4 title" v-else>Assessment--Exon/Intron ratio on Protein-coding genes</div>
-          <img :src="img_exon_intron_ratio" />
+          <div class="title4 title" v-if="is_server">Assessment--5.Nascent RNA purity</div>
+          <table border="1" v-if="is_server">
+            <tr><th>Measure</th><th>Value</th><th>Recommend</th></tr>
+            <tr v-if="assign_mapped"><td>reads assign known genes</td><td> {{ assign_mapped }}</td><td>-</td></tr>
+            <tr v-if="chrM_mapped"><td>reads mapped to chrM</td><td> {{ chrM_mapped }}</td><td>-</td></tr>
+            <tr v-if="mRNA_contamination"><td>mRNA contamination</td><td> {{ mRNA_contamination }}</td><td>1 &lt; value &lt; 1.8</td></tr>
+          </table>
+          <table border="1" v-if="is_server">
+            <tr><th>File</th><th>Directory</th></tr>
+            <tr><td>Exon intro ratio</td><td> {{ exon_intron_ratio_csv }}</td></tr>
+          </table>
+          <div class="card" v-if="is_server">
+            <img :src="img_exon_intron_ratio" />
+            <small>exon to intron read density ratio plot</small>
+            <p>The plot evaluate mRNA contamination with the exon to intron read density ratio.</p>
+          </div>
+
+          <div class="title4 title" v-if="is_server">Assessment--6.Other preprocess metric</div>
+          <table border="1" v-if="is_server">
+            <tr><th>Measure</th><th>Value</th></tr>
+            <tr v-if="Trimmed_reads"><td>Trimmed reads</td><td> {{ Trimmed_reads }}</td></tr>
+            <tr v-if="Trim_loss_rate"><td>Trim loss rate</td><td> {{ Trim_loss_rate }}%</td></tr>
+            <tr v-if="Reads_with_polyX"><td>Reads with polyX</td><td> {{ Reads_with_polyX }}</td></tr>
+            <tr v-if="Uninformative_polyX_reads"><td>Uninformative polyX reads</td><td> {{ Uninformative_polyX_reads }}</td></tr>
+          </table>
+          <div class="card" v-if="img_mapping_split">
+            <img :src="img_mapping_split" />
+            <small>Mapping ratio plot</small>
+            <p>The plot evaluate mapping ratio generated by bowtie2 and bwa.</p>
+          </div>
+
+          <div v-if="is_server"></div>
+          <div v-else>
+            <p >For bigwig files, we only provide exon/intron ratio as assessment. For more QC information, please use our python package nasap (https://pypi.org/project/nasap/). Thanks so much.</p>
+
+            <table border="1" v-if="exon_intron_ratio_csv">
+              <tr><th>File</th><th>Directory</th></tr>
+              <tr><td>Exon intro ratio</td><td> {{ exon_intron_ratio_csv }}</td></tr>
+            </table>
+            <div class="card" v-if="img_exon_intron_ratio">
+              <img :src="img_exon_intron_ratio" />
+              <small>exon to intron read density ratio plot</small>
+              <p>The plot evaluate mRNA contamination with the exon to intron read density ratio.</p>
+            </div>
+          </div>
         </div>
       </div>
 
 
-      <!--3-->
+      <!--3 quantification-->
       <a name="part2"></a>
       <div style="height: 6rem;"></div>
       <div class="container2" v-if="show_quant">
         <div class="text2 text">
-          <h2>Nacent RNA expression</h2>
+          <h2>Quantitative analysis</h2>
           <!-- detail -->
-          <div class="title4 title">Nacent RNA expression--1.Expression output files</div>
+          <div class="title4 title">Quantitative analysis--1.Expression output files</div>
           <table border="1">
-            <tr>
-              <th>Measure</th>
-              <th>Value</th>
-            </tr>
-            <tr v-if="all_feature_attrs_csv">
-              <td>all feature attrs</td>
-              <td> {{ all_feature_attrs_csv }}</td>
-            </tr>
-
-            <tr v-if="exon_intron_ratio_csv">
-              <td>exon intron ratio</td>
-              <td> {{ exon_intron_ratio_csv }}</td>
-            </tr>
-            <tr v-if="lincRNA_baseCount_csv">
-              <td>lincRNA baseCount</td>
-              <td> {{ lincRNA_baseCount_csv }}</td>
-            </tr>
-
-            <tr v-if="lincRNA_gb_count_csv">
-              <td>lincRNA gene body count</td>
-              <td> {{ lincRNA_gb_count_csv }}</td>
-            </tr>
-
-
-            <tr v-if="lincRNA_pp_count_csv">
-              <td>lincRNA proximal promoter count</td>
-              <td> {{ lincRNA_pp_count_csv }}</td>
-            </tr>
-            <tr v-if="lincRNA_rpkm_csv">
-              <td>lincRNA rpkm</td>
-              <td> {{ lincRNA_rpkm_csv }}</td>
-            </tr>
-            <tr v-if="protein_coding_baseCount_csv">
-              <td>protein coding baseCount</td>
-              <td> {{ protein_coding_baseCount_csv }}</td>
-            </tr>
-
-
-            <tr v-if="protein_coding_gb_count_csv">
-              <td>protein coding gb count</td>
-              <td> {{ protein_coding_gb_count_csv }}</td>
-            </tr>
-
-
-            <tr v-if="protein_coding_pp_count_csv">
-              <td>protein coding pp count</td>
-              <td> {{ protein_coding_pp_count_csv }}</td>
-            </tr>
-            <tr v-if="protein_coding_rpkm_csv">
-              <td>protein coding rpkm</td>
-              <td> {{ protein_coding_rpkm_csv }}</td>
-            </tr>
+            <tr><th>File</th><th>Directory</th></tr>
+            <tr v-if="all_feature_attrs_csv"><td>all feature attrs</td><td> {{ all_feature_attrs_csv }}</td></tr>
+            <tr v-if="lincRNA_baseCount_csv"><td>lincRNA count</td><td> {{ lincRNA_baseCount_csv }}</td></tr>
+            <tr v-if="lincRNA_gb_count_csv"><td>lincRNA gene body count</td><td> {{ lincRNA_gb_count_csv }}</td></tr>
+            <tr v-if="lincRNA_pp_count_csv"><td>lincRNA proximal promoter count</td><td> {{ lincRNA_pp_count_csv }}</td></tr>
+            <tr v-if="lincRNA_rpkm_csv"><td>lincRNA rpkm</td><td> {{ lincRNA_rpkm_csv }}</td></tr>
+            <tr v-if="protein_coding_baseCount_csv"><td>protein coding count</td><td> {{ protein_coding_baseCount_csv }}</td></tr>
+            <tr v-if="protein_coding_gb_count_csv"><td>protein coding gb count</td><td> {{ protein_coding_gb_count_csv }}</td></tr>
+            <tr v-if="protein_coding_pp_count_csv"><td>protein coding pp count</td><td> {{ protein_coding_pp_count_csv }}</td></tr>
+            <tr v-if="protein_coding_rpkm_csv"><td>protein coding rpkm</td><td> {{ protein_coding_rpkm_csv }}</td></tr>
           </table>
+          <div class="title4 title">Quantitative analysis--2. Abundance estimate</div>
+          <div class="card" v-if="img_expressed_genes">
+            <img :src="img_expressed_genes" />
+            <small>expressed genes pie plot</small>
+            <p>The plot stats lincRNA and protein-coding RNA expressed genes.</p>
+          </div>
+          <div class="card" v-if="img_expression_distribution">
+            <img :src="img_expression_distribution" />
+            <small>expressed RNA distribution plot</small>
+            <p>The relative abundance of different RNA molecules are evaluted in the plot</p>
+          </div>
 
-          <div class="title4 title">Nacent RNA expression--2.Gene expression on different chromosomes</div>
-          <img :src="img_chr_rpkm" />
+          <div class="title4 title">Quantitative analysis--3.Gene expression on different chromosomes</div>
+          <div class="card" v-if="img_chr_rpkm">
+            <img :src="img_chr_rpkm" />
+            <small>chromosomal distribution plot</small>
+            <p>The expressed gene are distributed across chromosomes can be visualized with chromosomal distribution plot.</p>
+          </div>
         </div>
       </div>
 
 
-      <!--4-->
+      <!--4 pausing-->
       <a name="part3"></a>
       <div style="height: 6rem;"></div>
       <div class="container" v-if="show_pause">
@@ -306,55 +240,72 @@
           <h2>Pausing analysis</h2>
 
           <!-- detail -->
-          <div class="title4 title">Pausing analysis--1.pausing analysis results table </div>
+          <div class="title4 title">Pausing analysis--1.pausing index and escaping index </div>
           <table border="1">
-            <tr>
-              <th>Measure</th>
-              <th>Value</th>
-            </tr>
-            <tr v-if="pausing_sites_bed">
-              <td>pausing sites</td>
-              <td> {{ pausing_sites_bed }}</td>
-            </tr>
-            <tr v-if="pausing_sites_bed">
-              <td>pausing sites</td>
-              <td> {{ pausing_sites_bed }}</td>
-            </tr>
-            <tr v-if="lincRNA_ei_csv">
-              <td>lincRNA ei</td>
-              <td> {{ lincRNA_ei_csv }}</td>
-            </tr>
-            <tr v-if="lincRNA_pi_csv">
-              <td>lincRNA pi</td>
-              <td> {{ lincRNA_pi_csv }}</td>
-            </tr>
-            <tr v-if="protein_coding_ei_csv">
-              <td>protein coding ei</td>
-              <td> {{ protein_coding_ei_csv }}</td>
-            </tr>
-            <tr v-if="protein_coding_pi_csv">
-              <td>protein coding pi</td>
-              <td> {{ protein_coding_pi_csv }}</td>
-            </tr>
+            <tr><th>File</th><th>Directory</th></tr>
+            <tr><td>lincRNA ei</td><td v-if="lincRNA_ei_csv"> {{ lincRNA_ei_csv }}</td><td v-else>-</td></tr>
+            <tr><td>lincRNA pi</td><td v-if="lincRNA_pi_csv"> {{ lincRNA_pi_csv }}</td><td v-else>-</td></tr>
+            <tr><td>protein coding ei</td><td v-if="protein_coding_ei_csv"> {{ protein_coding_ei_csv }}</td><td v-else>-</td></tr>
+            <tr><td>protein coding pi</td><td v-if="protein_coding_pi_csv"> {{ protein_coding_pi_csv }}</td><td v-else>-</td></tr>
           </table>
-          <div class="title4 title">Pausing analysis--2.Pausing sites distribution on different chromosomes</div>
-          <img :src="img_pause_sites" />
+          <div class="title4 title">Pausing analysis--2.proximal pausing sites</div>
+          <table border="1" >
+            <tr><th>File</th><th>Directory</th></tr>
+            <tr><td>proximal pausing sites</td><td v-if="proximal_pausing_site_bed"> {{ proximal_pausing_site_bed }}</td><td v-else>-</td></tr>
+          </table>
+          <div class="card" v-if="img_proximal_pause_site">
+            <img :src="img_proximal_pause_site" />
+            <small>proximal pausing distribution plot</small>
+            <p>The proximal pausing sites are counted and visualized with proximal pausing distribution plot.</p>
+          </div>
+
+          <div class="title4 title">Pausing analysis--3.global pausing sites</div>
+          <table border="1" v-if="pausing_sites_bed">
+            <tr><th>File</th><th>Directory</th></tr>
+            <tr><td>global pausing sites</td><td> {{ pausing_sites_bed }}</td></tr>
+          </table>
+          <div class="card" v-if="img_pause_sites">
+            <img :src="img_pause_sites" />
+            <small>global pausing distribution plot</small>
+            <p>The pausing sites are distributed in whole genome.</p>
+          </div>
+
         </div>
       </div>
 
-      <!--5-->
+      <!--5 network-->
       <a name="part4"></a>
       <div style="height: 6rem;"></div>
       <div class="container2" v-if="show_network">
         <div class="text4 text">
           <h2>Gene regulatory network</h2>
-          <div class="title4 title">Gene regulatory network--1 In-degree distribution</div>
-          <img :src="img_network_degree" />
+          <div class="title4 title">Gene regulatory network--1 Network measurement</div>
+          <table border="1">
+            <tr><th>Measure</th><th>Value</th></tr>
+            <tr v-if="nodes_num"><td>nodes num</td><td> {{ nodes_num }}</td></tr>
+            <tr v-if="edges_num"><td>edges num</td><td> {{ edges_num }}</td></tr>
+            <tr v-if="mean_degree"><td>mean degree</td><td> {{ mean_degree }}</td></tr>
+            <tr v-if="assortativity_coefficient"><td>assortativity coefficient</td><td> {{ assortativity_coefficient }}</td></tr>
+            <tr v-if="correlation_coefficient"><td>correlation coefficient</td><td> {{ correlation_coefficient }}</td></tr>
+            <tr v-if="transitivity"><td>transitivity</td><td> {{ transitivity }}</td></tr>
+            <tr v-if="density"><td>density</td><td> {{ density }}</td></tr>
+          </table>
 
-          <div class="title4 title">Gene regulatory network--2 Motif distribution</div>
-          <img :src="img_network_motif" />
+          <div class="title4 title">Gene regulatory network--2 Degree distribution</div>
+          <div class="card" v-if="img_network_degree">
+            <img :src="img_network_degree" style="width: 100;" />
+            <small>Degree distribution plot</small>
+            <p>The statistical distribution of node degrees in a network.</p>
+          </div>
 
-          <div class="title4 title">Gene regulatory network--3 Community analysis</div>
+          <div class="title4 title">Gene regulatory network--3 Motif distribution</div>
+          <div class="card" v-if="img_network_motif">
+            <img :src="img_network_motif" />
+            <small>Motif distribution plot</small>
+            <p>The plot count the numbers of occurrences of the triadic motif profiles in networks.</p>
+          </div>
+
+          <div class="title4 title">Gene regulatory network--4 Community analysis</div>
           <p>All identifying communities can be found at txt directory </p>
           <div v-for="community_name in community_list" v-if="community_list">
             <span>{{ community_name }}</span>

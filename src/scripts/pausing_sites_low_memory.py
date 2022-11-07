@@ -1,12 +1,12 @@
-import os, fire
+import os, fire, pickle
 
 import numpy as np
 import pandas as pd
 import pyBigWig
 from collections import defaultdict
 
-from plot import lollipopplot
 from parse_gtf import sort_chr_list
+from plot import global_distribution_lollipopplot
 
 def get_bw_pause_sites(para_list):
   [bw_dir, chr, size, isForward] = para_list
@@ -47,8 +47,6 @@ def get_bw_pause_sites(para_list):
     chr_strand = chr + '-'
   # print( {chr_strand:  {'site': site_list, 'count': count_list} } )
   return {chr_strand:  {'site': site_list, 'count': count_list} }
-
-
 
 # 思路:
 # 1 获取所有染色体
@@ -129,7 +127,10 @@ def main(forward_bw, reverse_bw, output_root='./tmp_output/', cores=1):
       else:
         filter_chr_site_count_dic[chr]['reverse'] = {'site': [], 'count': []}
 
-    lollipopplot(sort_chrs, filter_chr_site_count_dic, output_root + 'imgs/pause_sites.png')
+    global_pause_sites_data = {'chrs': sort_chrs, 'lollipop_dic': filter_chr_site_count_dic}
+    global_distribution_lollipopplot(global_pause_sites_data, output_root)
+    # with open('global_pause_sites_data.pickle', 'wb') as f:
+    #   pickle.dump(global_pause_sites_data, f)
 
     n =0
     for chr_strand, site_count_dic in filter200_chr_site_dic.items():

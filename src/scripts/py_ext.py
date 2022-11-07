@@ -19,6 +19,11 @@ def dic2json(dict, json_dir):
   with open(json_dir, 'w') as f:
     json.dump(dict, f)
 
+def dic2csv(dict, csv_dir):
+  with open(csv_dir, 'w') as f:
+    for k, v in dict.items():
+      f.write( str(k) + ',' + str(v) + '\n')
+
 def two_list_2_dict(key_list, value_list):
   return dict(zip(key_list, value_list))
 

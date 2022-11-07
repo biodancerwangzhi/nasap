@@ -125,6 +125,7 @@ def server(output_root='./test_output/', forward_bw=None, reverse_bw=None, gtf=N
   network_cmd_list.extend(['--output_root', output_root])
   render_cmd_list.extend(['--output_root', output_root])
 
+
   # 检查必须参数
   # 检查文件
   _check_para('--forward_bw', forward_bw, str, isFile=True, required=True, output_root=output_root)
@@ -186,7 +187,7 @@ def assessment(output_root='./test_output/', read1=None,  cores=1, read2=None, a
     _alignment(output_root=output_root, read1=output_root + 'fastq/clean_read1.fq.gz', bowtie_index=bowtie_index, gtf=gtf, cores=cores )
 
   _genome_tracks(output_root=output_root, bam=output_root + 'sam/uniquemapped_sort.bam')
-  _render_template(output_root=output_root, type='assessment', is_server='False')
+  _render_template(output_root=output_root, type='assessment', is_server='No')
 
 def all(output_root='./test_output/', read1=None, bowtie_index=None,  gtf=None,  cores=1, read2=None, adapter1=None, adapter2=None, umi=None, tf_source=None, tf_filter_nodes=None, enhancer_source=None, enhancer_filter_nodes=None):
   logger.info('all--check installed software')
@@ -196,7 +197,7 @@ def all(output_root='./test_output/', read1=None, bowtie_index=None,  gtf=None, 
   _build_project_path(output_root)
   assessment(output_root=output_root, read1=read1,  cores=cores, read2=read2, adapter1=adapter1, adapter2=adapter2, umi=umi, bowtie_index=bowtie_index, gtf=gtf)
   server(output_root=output_root, forward_bw=output_root + 'bw/forward.bw', reverse_bw=output_root + 'bw/reverse.bw', gtf=gtf, cores=cores, tf_source=tf_source, tf_filter_nodes=tf_filter_nodes, enhancer_source=enhancer_source, enhancer_filter_nodes=enhancer_filter_nodes )
-
+  _render_template(output_root=output_root, type='all', is_server='No')
   # 把模块组合
   # preprocess_cmd_list = ['bash', self_scripts + 'preprocess.bash']
   # extract_preprocess_cmd_list = ['python', self_scripts + 'extract_preprocess.py']
@@ -326,6 +327,54 @@ def _preprocess(output_root=os.getcwd()+'/tmp_output', read1=None,  cores=1, rea
   log_file.close()
   logger.success(_cur_time() + 'preprocess--Finished. Find the results in ' + output_root)
 
+def preprocess_fast(output_root=os.getcwd()+'/tmp_output', read1=None,  cores=1, read2=None, adapter1=None, adapter2=None, umi=None, bowtie_index=None):
+  logger.info('preprocess--check installed software')
+  _check_soft( ['fastp', 'bioawk', 'python'], isPython=False)
+  if read2:
+    _check_soft( ['flash'], isPython=False)
+
+  logger.info('preprocess--check parameter and input files')
+  if not output_root.endswith('/'):
+    output_root = output_root + '/'
+  logger.info('preprocess--construct output dir')
+  _build_project_path(output_root)
+  log_file = open(output_root + 'tmp.log', 'w')
+  cmd_list = ['bash', self_scripts + 'preprocess_fast.bash']
+  cmd_list.extend(['--output_root', output_root])
+  # 必须参数 参数什么都不加
+  _check_para('--read1', read1, str, isFile=True, required=True, output_root=output_root)
+  cmd_list.extend(['--read1', read1])
+  _check_para('--bowtie_index', bowtie_index, str, required=True, output_root=output_root)
+  cmd_list.extend(['--bowtie_index', bowtie_index])
+
+  # 可选参数
+  # cur_cores = _get_cores(cores)
+  cur_cores = cores
+  cmd_list.extend(['--cores', str(cur_cores)])
+
+  if read2:
+    _check_para('--read2', read2, str, isFile=True, required=True, output_root=output_root)
+    cmd_list.extend(['--read2', read2])
+
+  if adapter1:
+    _check_para('--adapter1', adapter1, str, required=True, output_root=output_root)
+    cmd_list.extend(['--adapter1', adapter1])
+
+  if adapter2:
+    _check_para('--adapter2', adapter2, str, required=True, output_root=output_root)
+    cmd_list.extend(['--adapter2', adapter2])
+
+  # print( ' '.join(cmd_list) )
+  log_file.write(_cur_time()+ 'preprocess start'+'\n')
+  logger.info('preprocess--running script')
+  print( ' '.join(cmd_list) )
+  os.system( ' '.join(cmd_list) )
+  _genome_tracks(output_root=output_root, bam=output_root + 'sam/uniquemapped_sort.bam')
+
+  log_file.close()
+  logger.success(_cur_time() + 'preprocess--Finished. Find the results in ' + output_root)
+
+
 def _alignment(read1=None, bowtie_index=None, gtf=None, output_root=None, cores=1, read2=None ):
   logger.info('alignment--check installed software')
   _check_soft( ['bowtie2', 'samtools', 'bedtools'], isPython=False)
@@ -434,7 +483,7 @@ def feature_assign(forward_bw=None, reverse_bw=None, gtf=None, output_root=None)
     logger.error('feature_assign--Failed')
   log_file.write(_cur_time()+ 'feature assign finished\n')
   log_file.close()
-  _render_template(output_root=output_root, type='quantification', is_server='False')
+  _render_template(output_root=output_root, type='quantification', is_server='No')
 
 def pausing_sites(forward_bw=None, reverse_bw=None, output_root=None, cores=1):
   logger.info('pausing_sites--check installed software')
@@ -469,7 +518,7 @@ def pausing_sites(forward_bw=None, reverse_bw=None, output_root=None, cores=1):
     logger.success('pausing_sites--Finished. Find the results in ' + output_root)
   except:
     logger.error('pausing_sites--Failed')
-  _render_template(output_root=output_root, type='pausing', is_server='False')
+  _render_template(output_root=output_root, type='pausing', is_server='No')
 
 def network_analysis(tf_source=None, tf_filter_nodes=None, enhancer_source=None, enhancer_filter_nodes=None, output_root=None ):
   logger.info('network_analysis--check installed software')
@@ -503,26 +552,48 @@ def network_analysis(tf_source=None, tf_filter_nodes=None, enhancer_source=None,
 
   os.system( ' '.join(cmd_list) )
   logger.success('network analysis--Finished. Find the results in ' + output_root)
-  _render_template(output_root=output_root, type='network', is_server='False')
+  _render_template(output_root=output_root, type='network', is_server='No')
 
-def genome_tracks_visualize(forward_bw=None, reverse_bw=None, region=None, gene=None, output_root=None, cores=1):
-  logger.info('genome_tracks_visualize--check installed software')
-  _check_soft('pyGenomeTrack', isPython=False)
-  logger.info('genome_tracks_visualize--check parameter and input files')
+def network_links(specie=None, region='', gtf=None, forward_bw=None, reverse_bw=None, rpkm_file=None, output_root=None):
+  logger.info('network_links--check installed software')
+  _check_soft(['pyGenomeTracks'], isPython=False)
+  logger.info('network_links--check parameter and input files')
   if not output_root.endswith('/'):
     output_root = output_root + '/'
-  logger.info('genome_tracks_visualize--construct output dir')
+  logger.info('network_links--construct output dir')
   _build_project_path(output_root)
   log_file = open(output_root + 'tmp.log', 'w')
-  cmd_list = ['bash', self_scripts + 'preprocess.bash']
+  cmd_list = ['python', self_scripts + 'genome_track_visualization.py']
   cmd_list.extend(['--output_root', output_root])
   # 必须参数 参数什么都不加
-  _check_para('--forward_bw', forward_bw, str, isFile=True, required=True, output_root=output_root)
-  _check_para('--reverse_bw', reverse_bw, str, isFile=True, required=True, output_root=output_root)
+  if not specie:
+    print( 'you must provide specie')
+    os.sys.exit(1)
+  if region == '':
+    print( 'you must provide regulatory region with --region i.e --region chr1:1:5000000')
+    os.sys.exit(1)
+  if not gtf:
+    print( 'you must provide gtf file')
+    os.sys.exit(1)
+  if not forward_bw:
+    print( 'you must provide forward bw file')
+    os.sys.exit(1)
+  if not reverse_bw:
+    print( 'you must provide reverse bw file')
+    os.sys.exit(1)
 
-  # check region和gene
-  # 生成 pyGenomeTrack ini文件
-
+  cmd_list.extend(['--specie', specie])
+  cmd_list.extend(['--region', region])
+  cmd_list.extend(['--gtf', os.path.abspath(gtf)])
+  cmd_list.extend(['--forward', os.path.abspath(forward_bw)])
+  cmd_list.extend(['--reverse', os.path.abspath(reverse_bw)])
+  # 非必须参数
+  if rpkm_file:
+    _check_para('--rpkm_file', rpkm_file, str, isFile=True, required=True, output_root=output_root)
+    cmd_list.extend(['--rpkm_file', rpkm_file])
+  print( ' '.join(cmd_list) )
+  os.system( ' '.join(cmd_list) )
+  #
 
 def _render_template(type='server', output_root=None, is_server=None):
   # 每个步骤对应了输出文件， 用来丰富报表的数据
@@ -538,6 +609,7 @@ def _render_template(type='server', output_root=None, is_server=None):
   cmd_list.extend(['--output_root', output_root])
   if is_server:
     cmd_list.extend( ['--is_server', is_server])
+  print( ' '.join(cmd_list) )
   os.system( ' '.join(cmd_list) )
 
 
@@ -555,9 +627,11 @@ def main():
     'feature_assign': feature_assign,
     'pausing_sites': pausing_sites,
     'network_analysis': network_analysis,
+    'network_links': network_links,
     'render_template': _render_template,
     'server': server,
-    'all': all
+    'all': all,
+    'preprocess_fast': preprocess_fast,
   })
 
 if __name__ == '__main__':

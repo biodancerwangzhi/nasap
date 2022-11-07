@@ -19,27 +19,28 @@ def main():
 
   setup(
     name='nasap',
-    version='0.2.0',
+    version='0.2.4',
     description='This is nASAP setup file',
     author='biodancer',
     author_email='szxszx@foxmail.com',
     url='https://github.com/biodancerwanghzi/nasap/',
     # packages= find_packages(exclude=["back"]),
-    packages=['src'],
+    packages=['nasap'],
     include_package_data=True,
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    data_files= [('src/scripts/', glob('src/scripts/[!_]*.py', recursive=True) ),
-    ('src/scripts/templates/', ['src/scripts/templates/template.html', 'src/scripts/templates/template_track.txt']),
-    ('src/scripts/templates/static/', ['src/scripts/templates/static/vue.min.js'])
+    data_files= [('nasap/scripts/', glob('nasap/scripts/[!_]*.py', recursive=True) ),
+    ('nasap/scripts/', glob('nasap/scripts/[!_]*.bash', recursive=True) ),
+    ('nasap/scripts/templates/', ['nasap/scripts/templates/template.html', 'nasap/scripts/templates/template_track.txt']),
+    ('nasap/scripts/templates/static/', ['nasap/scripts/templates/static/vue.min.js'])
     ],
     entry_points={
       'console_scripts': [
-        'nasap=src.nasap:main',
-        'batch_nasap=src.batch_nasap:main'
+        'nasap=nasap.nasap:main',
+        'batch_nasap=nasap.batch_nasap:main'
       ]
     },
     install_requires=install_requires,
@@ -49,7 +50,7 @@ def main():
     ]
 
     },
-    zip_safe = True
+    # zip_safe = True
   )
 
 if __name__ == '__main__':

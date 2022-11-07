@@ -1,21 +1,21 @@
-import os, fire, re
-import pandas as pd
-import pyBigWig
-
-import sys
-from scipy import stats
-
+import os, fire, re, sys, pickle
 # sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))+ '/libs')
 script_dir = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
 lib_dir = os.path.abspath(os.path.join(os.path.abspath(__file__), '../../libs') )
 sys.path.append(lib_dir)
+from collections import Counter
+
+import numpy as np
+import pandas as pd
+from scipy import stats
+
+import pyBigWig
+
+from parse_gtf import get_gene_df, get_gene_merge_exon_dic, gene_df2dic
+from plot import chr_rpkm_boxplot, expressed_pie, expressed_distribution, exon_intron_scatter, proximal_pausing_sites_distribution
 
 ## 这个模块可以单独使用
 # nasap feature_assign --gtf=./a.gtf --forward=./a.bw --reverse=./b.bw --outpt=./tmp_out
-
-from py_ext import json2dic, dic2json, read_tmp_variable
-from parse_gtf import get_gene_df, get_gene_merge_exon_dic, gene_df2dic
-from plot import boxplot, scatterplot
 
 def get_total_bases(forward_bw, reverse_bw):
   return pyBigWig.open(forward_bw).header()['sumData'] + pyBigWig.open(reverse_bw).header()['sumData']
@@ -83,6 +83,35 @@ def get_attrs(gene_range_dic, forward_bw, reverse_bw, total_bases):
     # dic2json(gene_rpkm_dic, rpkm_json_output)
   return gene_rpkm_dic, gene_baseCount_dic, gene_pi_dic, gene_ei_dic, gene_pp_count_dic, gene_gb_count_dic
 
+def coding_vs_linc(protein_data, linc_data, output_root):
+  protein_num, linc_num = len(protein_data), len(linc_data)
+  big_labels = [f'Coding\n({protein_num})', f'LncRNA\n({linc_num})']
+  expressed_protein_num, expressed_linc_num = len(protein_data[protein_data>0]), len(linc_data[linc_data>0])
+  expressed_protein_ratio = np.round( expressed_protein_num/protein_num, 2) * 100
+  expressed_linc_ratio = np.round( expressed_linc_num/linc_num, 2) * 100
+  big_sizes = [protein_num, linc_num]
+
+  small_labels = [f'{expressed_protein_ratio}% Protein-coding genes\nExpressed',
+    f'{100-expressed_protein_ratio}% Protein-coding genes\nNot Expressed',
+    f'{expressed_linc_ratio}% LncRNA genes\nExpressed',
+    f'{100-expressed_linc_ratio}% LncRNA genes\nNot Expressed'
+  ]
+  small_sizes = [expressed_protein_num, protein_num-expressed_protein_num, expressed_linc_num, linc_num - expressed_linc_num]
+
+  # bigger
+  expressed_pie_data = { 'big_sizes': big_sizes,
+  'big_labels': big_labels,
+  'small_sizes': small_sizes,
+  'small_labels': small_labels}
+  expressed_pie(expressed_pie_data, output_root)
+  # with open('expressed_pie_data.pickle', 'wb') as f:
+  #   pickle.dump(expressed_pie_data, f)
+
+  expressed_dist_data = {'protein_data': protein_data, 'linc_data': linc_data }
+  expressed_distribution(expressed_dist_data, output_root)
+  # with open('expressed_dist_data.pickle', 'wb') as f:
+  #   pickle.dump(expressed_dist_data, f)
+
 # count, RPKM, PI, EI, Exon/intron density
 def main(gtf, forward_bw, reverse_bw, output_root ):
   total_bases = get_total_bases(forward_bw, reverse_bw)
@@ -96,7 +125,8 @@ def main(gtf, forward_bw, reverse_bw, output_root ):
   # print( list(gene_rpkm_dic.items())[:5] )
 
   attr_list = ['baseCount', 'rpkm', 'pp_count', 'gb_count', 'pi', 'ei']
-  for gene_type in set(filter_gene_df['genetype']):
+  filter_gene_type = set(filter_gene_df['genetype'])
+  for gene_type in filter_gene_type:
     gene_list = filter_gene_df[filter_gene_df['genetype'] == gene_type]['gene_name']
     for attr in attr_list:
       # type_attr_dic = {g: globals()['gene_' + attr +'_dic'][g] for g in gene_list}
@@ -110,14 +140,14 @@ def main(gtf, forward_bw, reverse_bw, output_root ):
    'pp_count': pd.Series(gene_pp_count_dic), 'gb_count': pd.Series(gene_gb_count_dic),
    'pi': pd.Series(gene_pi_dic), 'ei': pd.Series(gene_ei_dic)}, axis=1)
 
-  gene_attrs_df.to_csv(output_root+'csv/all_feature_attrs.csv')
+  gene_attrs_df.to_csv(output_root+'csv/%s_feature_attrs.csv'%gene_type)
 
   chr_list = list( set( filter_gene_df['chrom'] ) )
 
   sort_chr_list = [chrom for chrom in chr_list if re.match( r'chr\d+', chrom)]
   sort_chr_list.sort(key=lambda arr: (arr[:3], int(arr[3:])))
-  if 'chrM' in chr_list:  sort_chr_list.append('chrM')
-  if 'chrMT' in chr_list:  sort_chr_list.append('chrMT')
+  # if 'chrM' in chr_list:  sort_chr_list.append('chrM')
+  # if 'chrMT' in chr_list:  sort_chr_list.append('chrMT')
   if 'chrX' in chr_list:  sort_chr_list.append('chrX')
   if 'chrY' in chr_list:  sort_chr_list.append('chrY')
   rpkm_list = []
@@ -127,12 +157,24 @@ def main(gtf, forward_bw, reverse_bw, output_root ):
     cur_rpkm_list = []
     for gene in gene_list:
       try:
-        cur_rpkm_list.append(gene_rpkm_dic[gene])
+        cur_rpkm_list.append( np.log10(gene_rpkm_dic[gene]) )
       except:
         continue
     rpkm_list.append( cur_rpkm_list )
-  boxplot(rpkm_list, 'chromsome genes RPKM', 'chromsome', 'RPKM', sort_chr_list, output_root + 'imgs/chr_rpkm.png' )
+  chr_rpkm_data = {'rpkm_list': rpkm_list, 'sort_chr_list': sort_chr_list}
+  chr_rpkm_boxplot( chr_rpkm_data, output_root )
+  # with open('chr_rpkm_data.pickle', 'wb') as f:
+  #   pickle.dump(chr_rpkm_data, f)
 
+  # protein vs linc
+  if ('protein_coding' in filter_gene_type) and ('lincRNA' in filter_gene_type):
+    protein_data = pd.read_csv(output_root + 'csv/protein_coding_rpkm.csv').rpkm
+    linc_data = pd.read_csv( output_root + 'csv/lincRNA_rpkm.csv').rpkm
+    coding_vs_linc(protein_data, linc_data, output_root)
+  if ('protein_coding' in filter_gene_type) and ('lncRNA' in filter_gene_type):
+    protein_data = pd.read_csv(output_root + 'csv/protein_coding_rpkm.csv').rpkm
+    linc_data = pd.read_csv( output_root + 'csv/lncRNA_rpkm.csv').rpkm
+    coding_vs_linc(protein_data, linc_data, output_root)
 
 
   # Exon/Intron
@@ -145,7 +187,7 @@ def main(gtf, forward_bw, reverse_bw, output_root ):
     try:
       gene_range = gene_range_dic[strand][gene_name]
     except:
-      print('no gene', gene_name)
+      # print('no gene', gene_name)
       os.sys.exit(0)
       continue
     gene_start, gene_end = gene_range[1], gene_range[2]
@@ -184,10 +226,71 @@ def main(gtf, forward_bw, reverse_bw, output_root ):
 
   filter_exon_intron_df = exon_intron_df[(exon_intron_df['exon'] > 0) & (exon_intron_df['intron'] >0) ]
 
-
+  '''
   slope, intercept, r_value, p_value, std_err = stats.linregress(filter_exon_intron_df['exon'],filter_exon_intron_df['intron'])
-  text= 'y = {:4.2e} x + {:4.2e}; \nR^2= {:2.2f}'.format(slope, intercept, r_value*r_value)
+  text= 'y = {:4.2e} x + {:4.2e}; \nR^2= {:2.2f}; p= {:2.2f}'.format(slope, intercept, r_value*r_value, p_value)
   scatterplot( filter_exon_intron_df['exon'], filter_exon_intron_df['intron'], 'Exon/Intron ratio', 'Exon', 'Intron', text, output_root+'imgs/exon_intron_ratio.png' )
+  '''
+
+  # remove 两端的异常值
+  exon_min, exon_max = filter_exon_intron_df['exon'].quantile( [0.1, 0.9] )
+  intron_min, intron_max = filter_exon_intron_df['intron'].quantile( [0.1, 0.9] )
+  filter_exon_intron_df1 = filter_exon_intron_df[(filter_exon_intron_df['exon'] > exon_min) & (filter_exon_intron_df['intron'] >intron_min) & (filter_exon_intron_df['exon'] < exon_max) & (filter_exon_intron_df['intron'] <intron_max) ]
+  # 计算拟合值
+  slope, intercept, r_value, p_value, std_err = stats.linregress( filter_exon_intron_df1['exon'], filter_exon_intron_df1['intron'] )
+  text= 'y = {:4.2e} x + {:4.2e}; \nR^2= {:2.2f}; p= {:2.2e}'.format(slope, intercept, r_value*r_value, p_value)
+
+  tmp_dir = output_root + 'csv/preprocess_report.csv'
+  if os.path.exists(tmp_dir):
+    with open(tmp_dir, encoding="utf-8",mode="a") as file:
+        file.write('mRNA_contamination' + ',' + str(slope) + '\n')
+  else:
+    with open(output_root + 'csv/preprocess_report.csv', 'w') as file:
+      file.write( 'mRNA_contamination' + ',' + str(slope) + '\n' )
+
+  exon_intron_data = { 'filter_exon_intron_df1': filter_exon_intron_df1, 'text': text}
+  exon_intron_scatter( exon_intron_data, output_root )
+  # with open('exon_intron_data.pickle', 'wb') as f:
+  #   pickle.dump(exon_intron_data, f)
+
+
+  # proximal pause site
+  pp_site_file = open(output_root + 'bed/proximal_pause_sites.bed', 'w')
+  if ('protein_coding' in filter_gene_type):
+    protein_data = pd.read_csv(output_root + 'csv/protein_coding_pi.csv', index_col=0)
+    filter_genes = protein_data[pd.to_numeric( protein_data.pi, errors='coerce' ) > 2].index
+    site_index_list = []
+    for i, row in filter_gene_df[filter_gene_df['gene_name'].isin(filter_genes)].iterrows():
+      chr = row['chrom']
+      gene_name = row['gene_name']
+      if row['strand'] == '+':
+        tss = row['start']
+        # density_list = [forward_bw_signal.stats(chr, tss+j*50, tss+(j+1)*50 )[0] for j in range(7)]
+        signals = forward_bw_signal.values(chr, tss, tss+350 )
+        signal_median = np.median( signals )
+        if signal_median < 0.5: continue
+        max_idx = np.argmax( signals )
+        if signals[max_idx]/signal_median < 5: continue
+        ln = chr + '\t' + str( tss + max_idx ) + '\t' +str( tss + max_idx+1 ) + '\t' + gene_name + '\t' + str(max_idx ) + '\n'
+      else:
+        tss = row['end']
+        signals = forward_bw_signal.values(chr, tss-350, tss )
+        signal_median = np.median( signals )
+        if signal_median < 0.5: continue
+        max_idx = np.argmax( signals )
+        if signals[max_idx]/signal_median < 5: continue
+        # density_list = [reverse_bw_signal.stats(chr, tss-(j+1)*50, tss-j*50 )[0] for j in range(7)]
+        ln = chr + '\t' + str( tss - (350-max_idx+1) ) + '\t' + str( tss -  (350-max_idx) ) + '\t' + gene_name + '\t' +  str(max_idx ) + '\n'
+      # print(ln)
+      pp_site_file.write(ln)
+      site_index_list.append( max_idx )
+  # print( site_index_list )
+  pp_site_file.close()
+
+  proximal_pausing_sites_distribution(site_index_list, output_root)
+  # with open('site_index_list.pickle', 'wb') as f:
+  #   pickle.dump(site_index_list, f)
+
 
 if __name__ == '__main__':
   fire.Fire( main )

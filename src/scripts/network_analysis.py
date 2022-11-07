@@ -1,18 +1,24 @@
-import os, sys, time
-import matplotlib.pyplot as plt
-from collections import defaultdict, Counter
-import numpy as np
-import networkx as nx
-import hvplot.networkx as hvnx
-from community import community_louvain
-import fire
-
+import os, sys, pickle, fire
 script_dir = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
 lib_dir = os.path.abspath(os.path.join(os.path.abspath(__file__), '../../libs') )
 sys.path.append(lib_dir)
+from collections import defaultdict, Counter
 
-from py_ext import dic2json, two_list_2_dict
+import numpy as np
 
+import matplotlib.pyplot as plt
+plt.style.use('seaborn-whitegrid')
+from matplotlib.pyplot import Polygon
+from matplotlib import ticker
+import seaborn as sns
+sns.set(style='whitegrid')
+
+import networkx as nx
+import hvplot.networkx as hvnx
+from community import community_louvain
+
+from py_ext import dic2csv, two_list_2_dict
+from plot import in_out_degree, network_motif
 
 def get_source_target(source_file):
   source_set, target_set, source_target_edge_set = set(), set(), set()
@@ -46,7 +52,24 @@ def filter_nodes(G, attrs_dic, over_condition=0):
   sub_G = G.subgraph(filter_nodes)
   return sub_G
 
-def degree_plot(G, output_root):
+def network_summary_info(G, output_root):
+  graph_info = {}
+  graph_info['nodes_num'] = nx.number_of_nodes(G)
+  graph_info['edges_num'] = nx.number_of_edges(G)
+  graph_info['mean_degree'] = 2* graph_info['edges_num']/graph_info['nodes_num']
+  graph_info['assortativity_coefficient'] = nx.degree_assortativity_coefficient(G) # 匹配系数
+  graph_info['correlation_coefficient'] = nx.degree_pearson_correlation_coefficient(G) # 相关性系数
+  # graph_info['closeness_centrality'] = nx.closeness_centrality(G) # 节点距离中心系数
+  # graph_info['betweenness_centrality'] = nx.betweenness_centrality(G) # 节点介数中心系数
+  graph_info['transitivity'] = nx.transitivity(G) # 图或网络的传递性。
+  # graph_info['clustering'] = nx.clustering(G) # 图或网络中节点的聚类系数,用来度量连接的密度。
+  # graph_info['average_clustering'] = nx.average_clustering(G) # nx.clustering(G) 的均值
+  # graph_info['square_clustering'] = nx.square_clustering(G)
+  graph_info['density'] = nx.density(G)
+  dic2csv(graph_info, output_root + 'csv/graph_info.csv')
+
+
+def degree_analysis(G, output_root):
   def degree_histogram_directed(G, in_degree=False, out_degree=False):
     """Return a list of the frequency of each degree value.
 
@@ -86,15 +109,10 @@ def degree_plot(G, output_root):
   in_degree_freq = degree_histogram_directed(G, in_degree=True)
   out_degree_freq = degree_histogram_directed(G, out_degree=True)
   # degrees = range(len(in_degree_freq))
-  plt.figure(figsize=(12, 8))
-  plt.loglog(range(len(in_degree_freq)), in_degree_freq, 'bo-', label='in-degree')
-  plt.loglog(range(len(out_degree_freq)), out_degree_freq, color='orange', marker='o', label='out-degree')
-  plt.xlabel('Degree')
-  plt.ylabel('Frequency')
-  plt.legend()
-  plt.savefig(output_root + 'imgs/network_degree.png')
-  plt.savefig(output_root + 'imgs/network_degree.pdf')
-  plt.close()
+  in_out_degree_dic = {'in_degree': in_degree_freq, 'out_degree': out_degree_freq}
+  in_out_degree( in_out_degree_dic, output_root)
+  # with open('in_out_degree_dic.pickle', 'wb') as f:
+  #   pickle.dump(in_out_degree_dic, f)
 
 
 def computeTriads(graph):
@@ -102,7 +120,7 @@ def computeTriads(graph):
     triads_13 = {x: y for x,y in triads_16.items() if(x != '003' and x != '012' and x != '102')}
     return triads_13
 
-def motif_plot( G, output_root ):
+def motif_analysis( G, output_root ):
   outdeg = G.out_degree()
   # 这步要 缩减一下几点 否则 triadic 跑不动
   to_keep = [n[0] for n in outdeg if n[1] > 3]
@@ -118,43 +136,13 @@ def motif_plot( G, output_root ):
   ]
   triad_count_list =[triads_13[t] for t in triad_list]
 
-  triad_graph_list = [nx.triad_graph( triad ) for triad in triad_list]
-
-  # fig = plt.figure()
-  fig = plt.figure(figsize=(16, 9))
-  axgrid = fig.add_gridspec(5, 14)
-
-  ax0 = fig.add_subplot(axgrid[0, 0], ylabel='Triads' )
-  ax0.set_ylabel('motif', fontdict={'size': 16}, rotation=0)
-
-  # ax0.set_axis_off()
-  ax0.spines['right'].set_visible(False)
-  ax0.spines['top'].set_visible(False)
-  ax0.spines['bottom'].set_visible(False)
-  ax0.spines['left'].set_visible(False)
-  ax0.set_xticks([])
-  ax0.set_yticks([])
-
-  for i, graph in enumerate(triad_graph_list):
-      tmp_ax = fig.add_subplot(axgrid[0, i+1] )
-      nx.draw_spectral(graph, ax =tmp_ax, node_size=12 )
-      plt.title( i+1 )
-
-  ax1 = fig.add_subplot(axgrid[1:5, :])
-  #ax0.grid(True, which='minor')
-  #ax0.axhline(y=0, color='k')
-  plt.xticks(np.arange(min(xAxis), max(xAxis)+1, 1.0))
-  ax1.bar(xAxis, triad_count_list )
-  ax1.set_ylabel('Quantity', fontdict={'size': 16})
-  ax1.set_xlabel('Motif', fontdict={'size': 16})
-  plt.tight_layout()
-  plt.savefig(output_root + 'imgs/network_motif.png')
-  plt.savefig(output_root + 'imgs/network_motif.pdf')
-  plt.close()
+  motif_dic = {'xAxis': xAxis, 'triad_count_list': triad_count_list}
+  network_motif(motif_dic, output_root)
+  with open('motif_dic.pickle', 'wb') as f:
+    pickle.dump(motif_dic, f)
 
 
-
-def analysis_community( G, node_type_dic, output_root ):
+def community_analysis( G, node_type_dic, output_root ):
   type_list = list( set( node_type_dic.values() ) )
   shape_list = 'od^ps>v<h8'
   if len(type_list) > len( shape_list):
@@ -167,6 +155,7 @@ def analysis_community( G, node_type_dic, output_root ):
   for n, c in partition.items():
     community_dic[c].append(n)
 
+  dic2csv({'community_' + str(c): len(n_list) for c, n_list in community_dic.items()}, output_root + 'csv/community_node_num.csv')
   for c, n_list in community_dic.items():
     g = G.subgraph( n_list )
     keep_nodes = [n for n,d in g.degree if d >= 2 ]
@@ -195,7 +184,6 @@ def analysis_community( G, node_type_dic, output_root ):
         continue
     fig = plt.figure(figsize=(12,12))
     # nx.draw( g, pos, node_shape=[type_shape_dic[node_type_dic[n] ] for n in g] )
-
 
     hv_final = hvnx.draw_networkx_edges(g, pos, connectionstyle="arc3,rad=0.1", width=950, height=950, edge_line_width=0.1 )
 
@@ -271,19 +259,19 @@ def main(tf_source=None, tf_filter_nodes=None, enhancer_source=None, enhancer_fi
   print( 'after filtering, source gene number is %s, target gene number is %s'%( str(len(filter_source) ), str(len(filter_target) )) )
 
   G = generate_graph(filter_target, filter_source, edge_set)
-
+  network_summary_info(G, output_root)
   # attr_dic = {ln.split(',')[0]: ln.split(',')[1] for ln in open(filter_nodes)}
   # print( len(protein_list), len(tf_list), len(tf_protein_edge_set))
   # G = generate_graph(protein_list, tf_list, tf_protein_edge_set)
   # filter_G = filter_nodes(G, attr_dic)
   # 2 degree 分析
-  degree_plot(G, output_root)
+  degree_analysis(G, output_root)
 
   # 3 motif 分析
-  motif_plot(G, output_root)
+  motif_analysis(G, output_root)
 
   # 4 社区发现
-  analysis_community( G, node_type_dic, output_root )
+  community_analysis( G, node_type_dic, output_root )
 
 if __name__ == '__main__':
   fire.Fire(main)

@@ -1,8 +1,6 @@
 import os, fire
-import matplotlib.pyplot as plt
-
-
 # 输入 sam, 输出 unique_sam
+from plot import mapping_ratio_stack
 
 def parse_tags(s):
   tags = {}
@@ -105,8 +103,9 @@ def main(sam_dir, sam_file, output_root):
     [uniquemapped, nonredundant],
     [multimapped, redundant]
   ]
-  draw_stack_plot(['common', 'bowtie2'], stackbar_list, output_root)
-
+  mapping_ratio_data = {'map_ratio_list': stackbar_list,
+  'soft': ['bwa-mem', 'bowtie2'] }
+  mapping_ratio_stack(mapping_ratio_data, output_root)
 
 if __name__ == '__main__':
   fire.Fire( main )
