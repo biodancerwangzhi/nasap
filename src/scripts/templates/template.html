@@ -134,6 +134,13 @@
             <tr v-if="PBC2"><td>PBC2</td><td> {{ PBC2 }}</td><td>1 &lt; PBC2 &lt; 3</td></tr>
           </table>
 
+          <div v-if="is_server">
+            <p v-if="NRF">Non-Redundant Fraction (NRF) – Number of distinct uniquely mapping reads (i.e. after removing duplicates) / Total number of reads.</p>
+            <p v-if="PBC1">PCR Bottlenecking Coefficient 1 (PBC1) - number of genomic locations where exactly one read maps uniquely / number of distinct genomic locations to which some read maps uniquely</p>
+            <p v-if="PBC2">PCR Bottlenecking Coefficient 2 (PBC2) - number of genomic locations where only one read maps uniquely / number of genomic locations where two reads map uniquely</p>
+          </div>
+
+
           <div class="title4 title" v-if="is_server">Assessment--4.QC trend</div>
           <div class="card" v-if="img_quality_trend">
             <img :src="img_quality_trend" />

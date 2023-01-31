@@ -1,4 +1,4 @@
-import os, sys, pickle
+import os, sys
 script_dir = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
 lib_dir = os.path.abspath(os.path.join(os.path.abspath(__file__), '../../libs') )
 sys.path.append(lib_dir)

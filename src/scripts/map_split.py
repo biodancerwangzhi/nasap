@@ -9,30 +9,6 @@ def parse_tags(s):
     tags[name] = int(val) if type_ == 'i' else val
   return tags
 
-def draw_stack_plot(steps, stackbar_list, output_root):
-  x_un, x_uni, x_mul = stackbar_list
-  plt.figure(figsize=(10,7)) #设置画布的尺寸
-  plt.bar(steps, x_un, label="unmapped reads",edgecolor = 'black')
-  plt.bar(steps, x_uni, label="unique mapped reads",edgecolor = 'black', bottom = x_un)
-  plt.bar(steps, x_mul, label="non-unique mapped reads",edgecolor = 'black', bottom = [i+j for i, j in zip(x_un,x_uni)])
-  plt.legend( loc=3,fontsize=14)  # 设置图例位置
-  plt.ylabel('Mapping reads number',fontsize=16)
-  plt.xlabel('Mapping reads split method',fontsize=16)
-
-  for x1, y1, y2, y3 in zip(steps, x_un, x_uni, x_mul):
-    p1 = y1/(y1+y2+y3)
-    p2 = y2/(y1+y2+y3)
-    p3 = y3/(y1+y2+y3)
-    if p1 >0.05:
-      plt.text(x1, y1 * 0.4, '{:.0%}'.format(p1), ha='center',fontsize = 15)
-    if p2>0.05:
-      plt.text(x1, y1 + (y2)* 0.4,  '{:.0%}'.format(p2), ha='center',fontsize = 15)
-    if p3>0.05:
-      plt.text(x1, y1 + y2 + (y3)* 0.4, '{:.0%}'.format(p3), ha='center',fontsize = 15)
-
-  plt.savefig(output_root +'imgs/mapping_split.png')
-  plt.savefig(output_root +'imgs/mapping_split.pdf')
-
 
 def main(sam_dir, sam_file, output_root):
   # unmapped: SAM flag includes 4

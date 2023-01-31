@@ -2,6 +2,30 @@ import sys, os
 from glob import glob
 from setuptools import setup,find_packages
 
+snap_files = []
+snapdir = './nasap/scripts/snap/**'
+
+snap_directories = [f for f in glob(snapdir, recursive=True) if os.path.isdir( f )]
+# print( snap_directories )
+for directory in snap_directories:
+  snap_files.append((directory, [os.path.join(directory, f) for f in os.listdir(directory) if not os.path.isdir(os.path.join(directory, f))]) )
+
+gencore_files = ['nasap/scripts/gencore/gencore']
+
+data_files = [('nasap/scripts/', glob('nasap/scripts/[!_]*.py', recursive=True) ),
+  ('nasap/scripts/', glob('nasap/scripts/[!_]*.bash', recursive=True) ),
+  ('nasap/scripts/templates/', ['nasap/scripts/templates/template.html', 'nasap/scripts/templates/template_track.txt']),
+  ('nasap/scripts/templates/static/', ['nasap/scripts/templates/static/vue.min.js']),
+]
+# print( snap_files )
+data_files.extend(snap_files)
+data_files.extend( gencore_files )
+
+def get_version():
+  with open( os.path.abspath(os.path.dirname(__file__) ) + '/nasap/__version__.py') as f:
+    ver = f.read().split('version=')[1].replace('"', '').strip()
+  return ver
+
 def main():
   root = os.path.abspath(os.path.dirname(__file__))
   with open(os.path.join(root, 'requirements.txt')) as f:
@@ -13,13 +37,13 @@ def main():
   #   if is_dep != 0:
   #     apt install
 
-  if float(sys.version[:3])<=3.6:
-    sys.stderr.write("CRITICAL: Python version must be >= 3.6x!\n")
-    sys.exit(1)
+  # if float(sys.version[:3])< 3.6:
+  #   sys.stderr.write("CRITICAL: Python version must be >= 3.6x!\n")
+  #   sys.exit(1)
 
   setup(
     name='nasap',
-    version='0.2.4',
+    version=get_version(),
     description='This is nASAP setup file',
     author='biodancer',
     author_email='szxszx@foxmail.com',
@@ -32,11 +56,7 @@ def main():
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    data_files= [('nasap/scripts/', glob('nasap/scripts/[!_]*.py', recursive=True) ),
-    ('nasap/scripts/', glob('nasap/scripts/[!_]*.bash', recursive=True) ),
-    ('nasap/scripts/templates/', ['nasap/scripts/templates/template.html', 'nasap/scripts/templates/template_track.txt']),
-    ('nasap/scripts/templates/static/', ['nasap/scripts/templates/static/vue.min.js'])
-    ],
+    data_files= data_files,
     entry_points={
       'console_scripts': [
         'nasap=nasap.nasap:main',

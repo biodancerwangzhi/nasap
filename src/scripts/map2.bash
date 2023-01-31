@@ -104,9 +104,9 @@ fi
 # exit 1
 
 
-# 4 bam基础统计量 包括complexity
+# 3 bam基础统计量 包括complexity
 # 这里sort为了使用bam2bed可以用的格式
-# echo "  mapping--3 compute complexity:"
+echo "  mapping--3 compute complexity:"
 samtools view -@ $cpu -Sb $sam_dir'uniquemapped.sam' > $sam_dir'uniquemapped.bam'
 samtools sort -n -@ $cpu -o $sam_dir'uniquemapped_sort.bam' $sam_dir'uniquemapped.bam'
 
@@ -144,15 +144,15 @@ more $txt_dir'pbc_qc.txt' | awk '{print "NRF,"$5}' >> $variable_report
 more $txt_dir'pbc_qc.txt' | awk '{print "PBC1,"$6}' >> $variable_report
 more $txt_dir'pbc_qc.txt' | awk '{print "PBC2,"$7}' >> $variable_report
 
-# 5 sort and  index
-# echo "  mapping--4 sort and index:"
+# 4 sort and  index
+echo "  mapping--4 sort and index:"
 samtools sort -@ $cpu -o $sam_dir'uniquemapped_sort.bam' $sam_dir'uniquemapped.bam'
 samtools index -@ $cpu $sam_dir'uniquemapped_sort.bam'
 # depth coverage
 # samtools depth ./tmp_output/sort.bam |  awk '{sum+=$3} END { print "average_depth--"sum/NR}' >>$output
 
-# 统计 线粒体 mt 含量
-# echo "  mapping--5 mapping reads stat:"
+# 5 统计 线粒体 mt 含量
+echo "  mapping--5 mapping reads stat:"
 chrM_reads_num=$(samtools idxstats $sam_dir'uniquemapped_sort.bam' | grep 'chrM' | cut -f 3)
 echo 'chrM_mapped,'$chrM_reads_num >> $variable_report
 

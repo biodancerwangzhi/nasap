@@ -4,7 +4,6 @@ from collections import Counter, defaultdict
 import numpy as np
 import pandas as pd
 from scipy import stats
-import networkx as nx
 
 import matplotlib.pyplot as plt
 plt.style.use('seaborn-whitegrid')
@@ -310,41 +309,4 @@ def in_out_degree(data, output_root):
   plt.savefig(output_root + 'imgs/network_degree.pdf')
   plt.close()
 
-def network_motif(data, output_root):
-  fig = plt.figure(figsize=(16, 9))
-  axgrid = fig.add_gridspec(5, 14)
-
-  ax0 = fig.add_subplot(axgrid[0, 0], ylabel='Triads' )
-  ax0.set_ylabel('motif', fontdict={'size': 16}, rotation=0)
-
-  # ax0.set_axis_off()
-  ax0.spines['right'].set_visible(False)
-  ax0.spines['top'].set_visible(False)
-  ax0.spines['bottom'].set_visible(False)
-  ax0.spines['left'].set_visible(False)
-  ax0.set_xticks([])
-  ax0.set_yticks([])
-
-  triad_list = [
-    "021D", "021U", "021C", "111D", "111U", "030T", "030C",
-    "201", "120D", "120U", "120C", "210", "300"
-  ]
-  triad_graph_list = [nx.triad_graph( triad ) for triad in triad_list]
-  for i, graph in enumerate(triad_graph_list):
-      tmp_ax = fig.add_subplot(axgrid[0, i+1] )
-      nx.draw_spectral(graph, ax =tmp_ax, node_size=12 )
-      plt.title( i+1 )
-
-  ax1 = fig.add_subplot(axgrid[1:5, :])
-  #ax0.grid(True, which='minor')
-  #ax0.axhline(y=0, color='k')
-  plt.xticks(np.arange(min(data['xAxis']), max(data['xAxis'])+1, 1.0))
-  ax1.bar(data['xAxis'], data['triad_count_list']  )
-  ax1.set_ylabel('Quantity', fontdict={'size': 16})
-  ax1.set_xlabel('Motif', fontdict={'size': 16})
-  ax1.set_yscale('log')
-  plt.tight_layout()
-  plt.savefig(output_root + 'imgs/network_motif.png')
-  plt.savefig(output_root + 'imgs/network_motif.pdf')
-  plt.close()
 

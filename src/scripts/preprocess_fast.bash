@@ -82,10 +82,11 @@ if ! [ -x "$(command -v bioawk)" ]; then
   exit 1
 fi
 
-if [ $read2 ]; then
+
 # 这步 具有adapter的 reads 统计量不同，因为 peppro设置 cutadapt -O 为1
 # -O 1表示 adapter 在3‘端只有 1bp也被看做有adapter，这明显不合理，fastp没有这个选项
 # 看了fastp的结果统计，
+if [ $read2 ]; then
   if [[ $adapter1 && $adapter2 ]]; then
     fastp -G -Q --adapter_sequence $adapter1 --thread $cpu \
       -A -l 16 --cut_front --cut_tail \
@@ -147,16 +148,30 @@ if ! [ -x "$(command -v bowtie2)" ]; then
   exit 1
 fi
 
-if [ $read2 ]; then
-  bowtie2 -1 $fq_dir'clean1.fq.gz' -2 $fq_dir'clean2.fq.gz' -x $bowtie_index -S $sam_dir'original.sam' --threads $cpu &> $txt_dir'bowtie2_out.txt'
-else
-  bowtie2 -U $fq_dir'clean1.fq.gz' -x $bowtie_index -S $sam_dir'original.sam' --threads $cpu &> $txt_dir'bowtie2_out.txt'
-fi
+# if [ $read2 ]; then
+#   bowtie2 -1 $fq_dir'clean1.fq.gz' -2 $fq_dir'clean2.fq.gz' -x $bowtie_index -S $sam_dir'original.sam' --threads $cpu &> $txt_dir'bowtie2_out.txt'
+# else
+#   bowtie2 -U $fq_dir'clean1.fq.gz' -x $bowtie_index -S $sam_dir'original.sam' --threads $cpu &> $txt_dir'bowtie2_out.txt'
+# fi
 
 # extract unqiue mapped reads
-echo 'unique mapping'
-grep -E "@|NM:" $sam_dir'original.sam' | grep -v "XS:" > $sam_dir'uniquemapped.sam'
-samtools view -@ $cpu -Sb $sam_dir'uniquemapped.sam' > $sam_dir'uniquemapped.bam'
-samtools sort -@ $cpu -o $sam_dir'uniquemapped_sort.bam' $sam_dir'uniquemapped.bam'
-samtools index -@ $cpu $sam_dir'uniquemapped_sort.bam'
+# echo 'unique mapping'
+# grep -E "@|NM:" $sam_dir'original.sam' | grep -v "XS:" > $sam_dir'uniquemapped.sam'
+# samtools view -@ $cpu -Sb $sam_dir'uniquemapped.sam' > $sam_dir'uniquemapped.bam'
+# samtools sort -@ $cpu -o $sam_dir'uniquemapped_sort.bam' $sam_dir'uniquemapped.bam'
+# samtools index -@ $cpu $sam_dir'uniquemapped_sort.bam'
+bash_dir=$(cd $(dirname $BASH_SOURCE) && pwd)
 
+if [ $read2 ]; then
+  echo $bowtie_index
+  echo $fq_dir'clean1.fq.gz'
+  echo $bash_dir
+  $bash_dir'/snap/snap-aligner' paired $bowtie_index $fq_dir'clean1.fq.gz' $fq_dir'clean2.fq.gz' -s 0 5000 -mrl 30 -F s -b- -t 40 -o $sam_dir'uniquemapped.bam' &> $txt_dir'snap_out.txt'
+else
+  echo $bowtie_index
+  echo $fq_dir'clean1.fq.gz'
+  echo $bash_dir
+  $bash_dir'/snap/snap-aligner' single $bowtie_index $fq_dir'clean1.fq.gz' -mrl 30  -F s -b- -t 40 -o $sam_dir'uniquemapped.bam' &> $txt_dir'snap_out.txt'
+fi
+samtools sort -o $sam_dir'uniquemapped_sort.bam'  $sam_dir'uniquemapped.bam' -@ 40
+samtools index $sam_dir'uniquemapped_sort.bam' -@ 40

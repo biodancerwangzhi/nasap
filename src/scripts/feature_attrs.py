@@ -23,20 +23,36 @@ def get_total_bases(forward_bw, reverse_bw):
 def density2rpkm(density, total_bases):
   return density / total_bases * 1e6
 
-def pausing_index( chr, start, end, strand,  bw ):
+def find_true_tss(chr, left, right, bw, strand):
+  # ref: Defining the Status of RNA Polymerase at Promoters
+  # Reannotation of TSSs
+  # annotated TSS ± 150, highest number of reads within this window
+  # If two bases both the same maximum, the most 5′-base was used as the TSS
+  v_list = bw.values(chr, left, right)
+  max_index_list = np.argwhere(v_list == np.amax(v_list)).flatten().tolist()
+  if strand == '+':
+    max_index = max_index_list[0]
+  else:
+    max_index = max_index_list[-1]
+  return left + max_index
+
+def pausing_index( chr, start, end, strand,  bw, tss_up, tss_down ):
   # 获取 表达的蛋白， lincRNA
   if strand == '+':
-    pp = bw.stats( chr, start, start + 1000)[0]
-    gb = bw.stats( chr, start +1000, end)[0]
+    true_tss = find_true_tss(chr, start-tss_up, start + tss_down, bw, strand)
+    pp = bw.stats( chr, true_tss-tss_up, true_tss + tss_down)[0]
+    gb = bw.stats( chr, true_tss +tss_down, end)[0]
   else:
-    pp = bw.stats( chr, end -1000, end)[0]
-    gb = bw.stats( chr, start, end -1000)[0]
-  pp_count, gb_count = int(pp* 1000), int(gb* (end-start +1000) )
-  if gb == 0:
-    #pi = float('nan')
-    pi= 'gene body count zero'
-  else:
-    pi = pp/gb
+    true_tss = find_true_tss(chr, end -tss_down, end + tss_up, bw, strand)
+    pp = bw.stats( chr, true_tss -tss_down, true_tss + tss_up)[0]
+    gb = bw.stats( chr, start, true_tss - tss_down)[0]
+  ppl = tss_up + tss_down
+  gbl = end - start - ppl
+  pp_count, gb_count = int(pp * ppl ), int(gb* gbl )
+  if gb == 0: gb = 1e-6
+  # pi = float('nan')
+  # pi= 'gene body count zero'
+  pi = pp/gb
   return pi, pp_count, gb_count
 
 def elongation_index( chr, start, end, strand,  bw ):
@@ -54,8 +70,10 @@ def elongation_index( chr, start, end, strand,  bw ):
     prr = gb/pp
   return prr
 
-def get_attrs(gene_range_dic, forward_bw, reverse_bw, total_bases):
-  gene_rpkm_dic, gene_baseCount_dic, gene_pi_dic, gene_ei_dic, gene_pp_count_dic, gene_gb_count_dic = {}, {}, {}, {},{}, {}
+def get_attrs(gene_range_dic, forward_bw, reverse_bw, total_bases, tss_up, tss_down):
+  gene_rpkm_dic, gene_baseCount_dic, gene_rpm_dic =  {},{}, {}
+  gene_pi_dic, gene_ei_dic = {}, {}
+  gene_pp_count_dic, gene_gb_count_dic = {}, {}
   for strand in ['+', '-']:
     strand_gene_range_dic = gene_range_dic[strand]
     bw = pyBigWig.open( {'+': forward_bw, '-': reverse_bw}[strand])
@@ -65,23 +83,27 @@ def get_attrs(gene_range_dic, forward_bw, reverse_bw, total_bases):
         density = bw.stats(c, s, e)[0]
         rpkm = density2rpkm(density, total_bases)
         base_count = int( density * (e - s) )
+        rpm = base_count * 1e6 /total_bases
         if e - s < 2300:
           pi, prr='gene too short', 'gene too short'
           continue
         else:
-          pi, pp_count, gb_count = pausing_index(c,s, e, strand, bw)
+          pi, pp_count, gb_count = pausing_index(c,s, e, strand, bw, tss_up, tss_down)
           prr = elongation_index(c,s, e, strand, bw)
 
       except:
         continue
       gene_rpkm_dic[gene_name] = rpkm
       gene_baseCount_dic[gene_name] = base_count
+      gene_rpm_dic[gene_name] = rpm
       gene_pi_dic[gene_name] = pi
       gene_ei_dic[gene_name] = prr
       gene_pp_count_dic[gene_name] = pp_count
       gene_gb_count_dic[gene_name] = gb_count
     # dic2json(gene_rpkm_dic, rpkm_json_output)
-  return gene_rpkm_dic, gene_baseCount_dic, gene_pi_dic, gene_ei_dic, gene_pp_count_dic, gene_gb_count_dic
+  return gene_rpkm_dic, gene_baseCount_dic, gene_rpm_dic, \
+  gene_pi_dic, gene_ei_dic, \
+  gene_pp_count_dic, gene_gb_count_dic
 
 def coding_vs_linc(protein_data, linc_data, output_root):
   protein_num, linc_num = len(protein_data), len(linc_data)
@@ -113,18 +135,21 @@ def coding_vs_linc(protein_data, linc_data, output_root):
   #   pickle.dump(expressed_dist_data, f)
 
 # count, RPKM, PI, EI, Exon/intron density
-def main(gtf, forward_bw, reverse_bw, output_root ):
+def main(gtf, forward_bw, reverse_bw, output_root, tss_up=150, tss_down=150 ):
+  # 这里 多搞两个 参数用 tss_up, tss_down 去定义 pp区域，
+  # tes的部分暂时不提，就用tss_right 到 tes 定义gb区域。
   total_bases = get_total_bases(forward_bw, reverse_bw)
-
   gene_df = get_gene_df( gtf )
   filter_gene_df = gene_df[ gene_df['genetype'].isin(['protein_coding', 'lincRNA', 'lncRNA']) ]
   gene_range_dic = gene_df2dic(filter_gene_df)
   # count, RPKM, promoter, geneBody count, PI, EI
 
-  gene_rpkm_dic, gene_baseCount_dic, gene_pi_dic, gene_ei_dic, gene_pp_count_dic, gene_gb_count_dic = get_attrs(gene_range_dic, forward_bw, reverse_bw, total_bases)
+  gene_rpkm_dic, gene_baseCount_dic, gene_rpm_dic, \
+  gene_pi_dic, gene_ei_dic, \
+  gene_pp_count_dic, gene_gb_count_dic = get_attrs(gene_range_dic, forward_bw, reverse_bw, total_bases, tss_up, tss_down)
   # print( list(gene_rpkm_dic.items())[:5] )
 
-  attr_list = ['baseCount', 'rpkm', 'pp_count', 'gb_count', 'pi', 'ei']
+  attr_list = ['baseCount', 'rpkm', 'rpm', 'pp_count', 'gb_count', 'pi', 'ei']
   filter_gene_type = set(filter_gene_df['genetype'])
   for gene_type in filter_gene_type:
     gene_list = filter_gene_df[filter_gene_df['genetype'] == gene_type]['gene_name']
@@ -136,9 +161,13 @@ def main(gtf, forward_bw, reverse_bw, output_root ):
       pd.DataFrame( {attr: pd.Series(type_attr_dic)} ).to_csv(output_root+'csv/' + gene_type + '_'+ attr + '.csv')
 
 
-  gene_attrs_df = pd.concat({'rpkm':pd.Series(gene_rpkm_dic), 'count': pd.Series(gene_baseCount_dic),
-   'pp_count': pd.Series(gene_pp_count_dic), 'gb_count': pd.Series(gene_gb_count_dic),
-   'pi': pd.Series(gene_pi_dic), 'ei': pd.Series(gene_ei_dic)}, axis=1)
+  gene_attrs_df = pd.concat({'rpkm':pd.Series(gene_rpkm_dic),
+    'count': pd.Series(gene_baseCount_dic),
+    'rpm': pd.Series(gene_rpm_dic),
+    'pp_count': pd.Series(gene_pp_count_dic),
+    'gb_count': pd.Series(gene_gb_count_dic),
+    'pi': pd.Series(gene_pi_dic),
+    'ei': pd.Series(gene_ei_dic)}, axis=1)
 
   gene_attrs_df.to_csv(output_root+'csv/%s_feature_attrs.csv'%gene_type)
 
@@ -286,8 +315,8 @@ def main(gtf, forward_bw, reverse_bw, output_root ):
       site_index_list.append( max_idx )
   # print( site_index_list )
   pp_site_file.close()
-
-  proximal_pausing_sites_distribution(site_index_list, output_root)
+  if len(site_index_list) > 0:
+    proximal_pausing_sites_distribution(site_index_list, output_root)
   # with open('site_index_list.pickle', 'wb') as f:
   #   pickle.dump(site_index_list, f)
 

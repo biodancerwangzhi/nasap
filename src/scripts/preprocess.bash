@@ -69,6 +69,8 @@ ARGUMENT_LIST=(
   "cores"
   "adapter1"
   "adapter2"
+  "umi_loc"
+  "umi_len"
 )
 
 opts=$(getopt \
@@ -114,7 +116,14 @@ while [[ $# -gt 0 ]]; do
       adapter2=$2
       shift 2
       ;;
-
+    --umi_loc)
+      umi_loc=$2
+      shift 2
+      ;;
+    --umi_len)
+      umi_len=$2
+      shift 2
+      ;;
     *)
       break
       ;;
@@ -153,9 +162,7 @@ fi
 ## 2 去掉bp后产生一些失败的reads(失败原因是太短，质量太低)
 ## 3剩下的reads
 
-# 1.1 标记UMI(可选)
-    # mark umi 如果有umi, umi会被加到 seq name后面 :UMI, 序列长度会从 100到100-umi长度
-    # fastp -i $read1 -o ./tmp_output/umi.fq.gz -A -G -Q -L --umi --umi_loc read1 --umi_len 6 &>tmp.txt
+
 
 echo "preprocess starts:"
 
@@ -176,9 +183,71 @@ echo "  Raw read1 number:" $read1_num
 echo read1_num--$read1_num >> $tmp_variable
 fi
 
-# 1.1 去接头  同时筛选短于 2bp的reads->(失败reads占比 + 剩下insert分布) 提示建库测序片段太短
+echo "  preprocess--1 remove UMI:"
+if [ $read2 ]; then
+  if [[ $umi_loc ]]; then
+    if [[ $umi_len ]]; then
+      fastp --thread $cpu -i $read1 -I $read2 \
+      -o $fq_dir'remove_umi1.fq.gz' -O $fq_dir'remove_umi2.fq.gz' \
+      -U --umi_loc $umi_loc --umi_len $umi_len \
+      --json $json_dir'remove_umi.json' \
+      --html $tmp_html &>$tmp_txt
+    else
+      fastp --thread $cpu -i $read1 -I $read2 \
+      -o $fq_dir'remove_umi1.fq.gz' -O $fq_dir'remove_umi2.fq.gz' \
+      -U --umi_loc $umi_loc \
+      --json $json_dir'remove_umi.json' \
+      --html $tmp_html &>$tmp_txt
+    fi
+  else
+    cp $read1 $fq_dir'remove_umi1.fq.gz'
+    cp $read2 $fq_dir'remove_umi2.fq.gz'
+  fi
+else
+  if [[ $umi_loc ]]; then
+    echo "umi_loc"
+    if [[ $umi_len ]]; then
+      echo "umi_len"
+      fastp --thread $cpu -i $read1 \
+      -o $fq_dir'remove_umi1.fq.gz' \
+      -U --umi_loc $umi_loc --umi_len $umi_len \
+      --json $json_dir'remove_umi.json' \
+      --html $tmp_html &>$tmp_txt
+    else
+      fastp --thread $cpu -i $read1 \
+      -o $fq_dir'remove_umi1.fq.gz' \
+      -U --umi_loc $umi_loc \
+      --json $json_dir'remove_umi.json' \
+      --html $tmp_html &>$tmp_txt
+    fi
+  else
+    echo "copy read"
+    cp $read1 $fq_dir'remove_umi1.fq.gz'
+  fi
+fi
+
+
+# 1.1 标记UMI(可选)
+    # mark umi 如果有umi, umi会被加到 seq name后面 :UMI, 序列长度会从 100到100-umi长度
+    # fastp -i $read1 -o ./tmp_output/umi.fq.gz -A -G -Q -L --umi --umi_loc read1 --umi_len 6 &>tmp.txt
+
+# fastp -i testdata/R1.fq -o testdata/out.R1.fq -U --umi_loc=read1 --umi_len=8
+
+# todo
+# 2 查看umi例子，思考其逻辑 参数判断
+#   umi_loc 指定 index(name的第二部分) 放进name的第一部分的尾部
+#   umi_loc 指定 read 是需要 提供 umi_len 会把 5'端的地方 移到 name的第一部分
+#   先判断上面两个条件是否成立 同时给个状态值 UMI, 后面gencore 处理bam 去掉 duplicates
+
+# 3 添加fastp 代码
+# 4 测试一下 test.fa
+
+
+
+
+# 1.2 去接头  同时筛选短于 2bp的reads->(失败reads占比 + 剩下insert分布) 提示建库测序片段太短
 # ( 可以给接头、也可以自动检测 )
-echo "  preprocess--1 remove adapter:"
+echo "  preprocess--2 remove adapter:"
 if [ $read2 ]; then
 # 这步 具有adapter的 reads 统计量不同，因为 peppro设置 cutadapt -O 为1
 # -O 1表示 adapter 在3‘端只有 1bp也被看做有adapter，这明显不合理，fastp没有这个选项
@@ -186,9 +255,9 @@ if [ $read2 ]; then
   if [[ $adapter1 && $adapter2 ]]; then
     fastp -G -Q -l 2 --adapter_sequence $adapter1 --thread $cpu \
       --adapter_sequence_r2 $adapter2 \
-      -i $read1 \
+      -i $fq_dir'remove_umi1.fq.gz' \
       -o $fq_dir'filter_adapter1.fq.gz' \
-      -I $read2 \
+      -I $fq_dir'remove_umi2.fq.gz' \
       -O $fq_dir'filter_adapter2.fq.gz' \
       --failed_out $fq_dir'failed_adapter.fq.gz' \
       --unpaired1 $fq_dir'failed_adapter_unpair1.fq.gz' \
@@ -197,9 +266,9 @@ if [ $read2 ]; then
       --html $tmp_html &>$tmp_txt
   else
     fastp -G -Q -l 2 --detect_adapter_for_pe --thread $cpu \
-      -i $read1 \
+      -i $fq_dir'remove_umi1.fq.gz' \
       -o $fq_dir'filter_adapter1.fq.gz' \
-      -I $read2 \
+      -I $fq_dir'remove_umi2.fq.gz' \
       -O $fq_dir'filter_adapter2.fq.gz' \
       --failed_out $fq_dir'failed_adapter.fq.gz' \
       --unpaired1 $fq_dir'failed_adapter_unpair1.fq.gz' \
@@ -210,14 +279,14 @@ if [ $read2 ]; then
 else
   if [[ $adapter1 ]]; then
     fastp -G -Q -l 2 --adapter_sequence $adapter1 --thread $cpu \
-      -i $read1 \
+      -i $fq_dir'remove_umi1.fq.gz' \
       -o $fq_dir'filter_adapter1.fq.gz' \
       --failed_out $fq_dir'failed_adapter.fq.gz' \
       --json $json_dir'remove_adapter.json' \
       --html $tmp_html &>$tmp_txt
   else
     fastp -G -Q -l 2 --thread $cpu \
-      -i $read1 \
+      -i $fq_dir'remove_umi1.fq.gz' \
       -o $fq_dir'filter_adapter1.fq.gz' \
       --failed_out $fq_dir'failed_adapter.fq.gz' \
       --json $json_dir'remove_adapter.json' \
@@ -309,7 +378,7 @@ echo peak_adapter_insertion_size--$peak_adapter_insertion_size >> $tmp_variable
 # echo "    Degradation_ratio:"$degradation_ratio
 # echo degradation_ratio--$degradation_ratio >> $tmp_variable
 
-echo "  preprocess--2 trimming low-quality bases from both ends:"
+echo "  preprocess--3 trimming low-quality bases from both ends:"
 if [ $read2 ]; then
 fastp -A -G -Q -l 16 --cut_front --cut_tail --thread $cpu \
   -i $fq_dir'filter_adapter1.fq.gz' \
@@ -348,8 +417,8 @@ fi
 reads_with_cutTwoEnd=$(read_length_change_num $txt_dir'adapter_read_len1.txt' $txt_dir'filter_trim_len1.txt')
 echo reads_with_cutTwoEnd--$reads_with_cutTwoEnd >> $tmp_variable
 
-# 1.3 去polyX  同时筛选短于 16bp的reads ->(具有polyX的reads占比，) 提示TES暂停
-echo "  preprocess--3 remove polyX:"
+# 1.4 去polyX  同时筛选短于 16bp的reads ->(具有polyX的reads占比，) 提示TES暂停
+echo "  preprocess--4 remove polyX:"
 if [ $read2 ]; then
 fastp -A -G -Q -l 16 --trim_poly_x --thread $cpu \
   -i $fq_dir'filter_trim1.fq.gz' \
@@ -397,9 +466,9 @@ fi
 # echo "polyX_reads--$polyX_reads"
 # echo "polyX_reads--$polyX_reads" >>$output
 
-# 1.4 QC 去 平均质量低(q20) 的reads->(失败reads占比) 提示建库测序片段太短
+# 1.5 QC 去 平均质量低(q20) 的reads->(失败reads占比) 提示建库测序片段太短
     # 使用 序列的平均质控 筛选原始序列 phred 筛选以q20为标准
-echo "  preprocess--4 drop low quality reads(mean phred quality less than 20):"
+echo "  preprocess--5 drop low quality reads(mean phred quality less than 20):"
 if [ $read2 ]; then
 fastp -A -G -q 20 --thread $cpu \
   -i $fq_dir'filter_polyX1.fq.gz' \
