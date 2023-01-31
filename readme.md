@@ -17,7 +17,6 @@ dependencies:
   - bioconda::samtools=1.13
   - bioconda::bedtools=2.30.0
   - pip:
-    - --index-url https://pypi.tuna.tsinghua.edu.cn/simple
     - nasap
 EOF
 conda env create -f ./env.yml
@@ -30,10 +29,10 @@ nasap --help
 ```
 
 
-## build a docker mirror and start a container 
+## pull a docker mirror and start a container 
 ```bash 
 cd Docker 
-docker build -t biodancer/nasap:latest . 
+docker pull -t biodancer/nasap:latest . 
 sudo docker run --rm -it -v `pwd`/data:/tmp -w /tmp biodancer/nasap:latest nasap --help 
 ```
 
