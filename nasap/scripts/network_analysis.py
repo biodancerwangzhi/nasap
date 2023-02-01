@@ -228,9 +228,6 @@ def community_analysis( G, node_type_dic, output_root ):
     hv_final = hvnx.draw_networkx_edges(g, pos, connectionstyle="arc3,rad=0.1", width=950, height=950, edge_line_width=0.1 )
 
     for type in type_nodes_dic.keys():
-      # if len(g) >= 400:
-        # hv_final = hv_final * hvnx.draw_networkx_nodes(g.subgraph(type_nodes_dic[type]), type_pos_dic[type], node_shape=type_shape_dic[type], node_color='#FCCC25', alpha=0.65, node_size=5)
-
       # if 10 < len( g ) < 400:
       hv_final = hv_final * hvnx.draw_networkx_nodes(g.subgraph(type_nodes_dic[type]), type_pos_dic[type], node_shape=type_shape_dic[type], node_size = [g.degree[node] * 10 for node in type_nodes_dic[type]], label=type  )
 

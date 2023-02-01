@@ -114,12 +114,13 @@ def _check_output(output_root):
 def server(output_root='./test_output/', forward_bw=None, reverse_bw=None, gtf=None,  cores=1, tf_source=None, tf_filter_nodes=None, enhancer_source=None, enhancer_filter_nodes=None):
   global global_root
   global_root = output_root
+  # logger.info('server--construct output dir')
+  if not output_root.endswith('/'): output_root = output_root + '/'
+  _create_project_dir(output_root)
   logger.info('server--check installed software')
   _check_soft( ['pandas', 'pyBigWig', 'numpy', 'scipy', 'networkx','community', 'hvplot'], isPython=True)
 
-  logger.info('server--construct output dir')
-  if not output_root.endswith('/'): output_root = output_root + '/'
-  _create_project_dir(output_root)
+
 
   logger.info('server--check parameter and input files')
 
@@ -180,12 +181,13 @@ def server(output_root='./test_output/', forward_bw=None, reverse_bw=None, gtf=N
 def assessment(output_root='./test_output/', read1=None,  cores=1, read2=None, adapter1=None, adapter2=None, umi_loc=None, umi_len=None, bowtie_index=None, gtf=None, genome=None, scale_factor=None):
   global global_root
   global_root = output_root
+  # logger.info('assessment--construct output dir')
+  if not output_root.endswith('/'): output_root = output_root + '/'
+  _create_project_dir(output_root)
   logger.info('assessment--check installed software')
   _check_soft( ['fastp', 'bioawk', 'python', 'bowtie2', 'samtools', 'bedtools', 'deeptools'], isPython=False)
 
-  logger.info('assessment--construct output dir')
-  if not output_root.endswith('/'): output_root = output_root + '/'
-  _create_project_dir(output_root)
+
 
   # 这里不检查 文件是否存在，因为在_pp函数中有检查
   _pp(output_root=output_root, read1=read1, read2=read2, adapter1=adapter1, adapter2=adapter2, umi_loc=umi_loc, umi_len=umi_len, genome=genome)
@@ -225,10 +227,10 @@ def all(output_root='./test_output/', read1=None, bowtie_index=None,  gtf=None, 
   global global_root
   global_root = output_root
   logger.info('all--check installed software')
-  _check_soft( ['fastp', 'bioawk', 'python', 'bowtie2', 'samtools', 'bedtools', 'deeptools'], isPython=False)
-  _check_soft( ['pandas', 'pyBigWig', 'numpy', 'scipy', 'networkx','community', 'hvplot'], isPython=True)
   if not output_root.endswith('/'): output_root = output_root + '/'
   _create_project_dir(output_root)
+  _check_soft( ['fastp', 'bioawk', 'python', 'bowtie2', 'samtools', 'bedtools', 'deeptools'], isPython=False)
+  _check_soft( ['pandas', 'pyBigWig', 'numpy', 'scipy', 'networkx','community', 'hvplot'], isPython=True)
   assessment(output_root=output_root, read1=read1,  cores=cores, read2=read2, adapter1=adapter1, adapter2=adapter2, umi_loc=umi_loc, umi_len=umi_len, bowtie_index=bowtie_index, gtf=gtf)
   server(output_root=output_root, forward_bw=output_root + 'bw/forward.bw', reverse_bw=output_root + 'bw/reverse.bw', gtf=gtf, cores=cores, tf_source=tf_source, tf_filter_nodes=tf_filter_nodes, enhancer_source=enhancer_source, enhancer_filter_nodes=enhancer_filter_nodes )
   _render_template(output_root=output_root, type='all', is_server='No')
@@ -478,13 +480,14 @@ def _tracks(bam=None, output_root=None, scale_factor=None):
 def feature_assign(forward_bw=None, reverse_bw=None, gtf=None, output_root=None):
   global global_root
   global_root = output_root
+  if not output_root.endswith('/'): output_root = output_root + '/'
+  # logger.info('feature_assign--construct output dir')
+  _create_project_dir(output_root)
   logger.info('feature_assign--check installed software')
   _check_soft( ['pandas', 'pyBigWig', 'scipy'], isPython=True)
 
   logger.info('feature_assign--check parameter and input files')
-  if not output_root.endswith('/'): output_root = output_root + '/'
-  logger.info('feature_assign--construct output dir')
-  _create_project_dir(output_root)
+
   log_file = open(output_root + 'tmp.log', 'w' )
 
   cmd_list = ['python', self_src + 'feature_attrs.py']
@@ -517,13 +520,14 @@ def feature_assign(forward_bw=None, reverse_bw=None, gtf=None, output_root=None)
 def pausing_sites(forward_bw=None, reverse_bw=None, output_root=None, cores=1):
   global global_root
   global_root = output_root
+  if not output_root.endswith('/'): output_root = output_root + '/'
+  # logger.info('pausing_sites--construct output dir')
+  _create_project_dir(output_root)
   logger.info('pausing_sites--check installed software')
   _check_soft( ['pandas', 'pyBigWig', 'numpy'], isPython=True)
 
   logger.info('pausing_sites--check parameter and input files')
-  if not output_root.endswith('/'): output_root = output_root + '/'
-  logger.info('pausing_sites--construct output dir')
-  _create_project_dir(output_root)
+
   log_file = open(output_root + 'tmp.log', 'w' )
 
   cmd_list = ['python', self_src + 'pausing_sites_low_memory.py']
@@ -555,20 +559,20 @@ def pausing_sites(forward_bw=None, reverse_bw=None, output_root=None, cores=1):
 def network_analysis(tf_source=None, tf_filter_nodes=None, enhancer_source=None, enhancer_filter_nodes=None, output_root=None ):
   global global_root
   global_root = output_root
+  if not output_root.endswith('/'): output_root = output_root + '/'
+  _create_project_dir(output_root)
+  # logger.info('network_analysis--construct output dir')
   logger.info('network_analysis--check installed software')
   _check_soft(['networkx','community', 'hvplot', 'numpy'], isPython=True)
 
   cmd_list = ['python', self_src + 'network_analysis.py']
-
   logger.info('network_analysis--check parameter and input files')
-  if not output_root.endswith('/'): output_root = output_root + '/'
-  logger.info('network_analysis--construct output dir')
   cmd_list.extend(['--output_root', output_root])
-  _create_project_dir(output_root)
+
   log_file = open(output_root + 'tmp.log', 'w' )
 
   if not(tf_source or enhancer_source):
-    logger.error( 'network_analysis--Failed ' + 'no tf or enhancer source file')
+    _write_err( 'network_analysis--Failed ' + 'no tf or enhancer source file')
     os.sys.exit(1)
 
   if tf_source:
