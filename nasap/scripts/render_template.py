@@ -137,10 +137,13 @@ def main(output_root='./tmp_output/', type='all', is_server=''):
       ('file', 'csv/lincRNA_gb_count.csv', 'lincRNA_gb_count_csv'),
       ('file', 'csv/lincRNA_pp_count.csv', 'lincRNA_pp_count_csv'),
       ('file', 'csv/lincRNA_rpkm.csv', 'lincRNA_rpkm_csv'),
+      ('file', 'csv/lincRNA_rpm.csv', 'lincRNA_rpm_csv'),
       ('file', 'csv/protein_coding_baseCount.csv', 'protein_coding_baseCount_csv'),
       ('file', 'csv/protein_coding_gb_count.csv', 'protein_coding_gb_count_csv'),
       ('file', 'csv/protein_coding_pp_count.csv', 'protein_coding_pp_count_csv'),
       ('file', 'csv/protein_coding_rpkm.csv', 'protein_coding_rpkm_csv'),
+      ('file', 'csv/protein_coding_rpkm.csv', 'protein_coding_rpm_csv'),
+      ('file', 'csv/erna_quant.csv', 'erna_quant_csv'),
       # 3.1 PI $EI
       ('file', 'csv/lincRNA_ei.csv', 'lincRNA_ei_csv'),
       ('file', 'csv/lincRNA_pi.csv', 'lincRNA_pi_csv'),

@@ -11,6 +11,7 @@ for directory in snap_directories:
   snap_files.append((directory, [os.path.join(directory, f) for f in os.listdir(directory) if not os.path.isdir(os.path.join(directory, f))]) )
 
 gencore_files = ['nasap/scripts/gencore/gencore']
+bg2bw_files = ['nasap/scripts/ucsc/bedGraphToBigWig']
 
 data_files = [('nasap/scripts/', glob('nasap/scripts/[!_]*.py', recursive=True) ),
   ('nasap/scripts/', glob('nasap/scripts/[!_]*.bash', recursive=True) ),
@@ -20,6 +21,7 @@ data_files = [('nasap/scripts/', glob('nasap/scripts/[!_]*.py', recursive=True) 
 # print( snap_files )
 data_files.extend(snap_files)
 data_files.extend( gencore_files )
+data_files.extend( bg2bw_files )
 
 def get_version():
   with open( os.path.abspath(os.path.dirname(__file__) ) + '/nasap/__version__.py') as f:

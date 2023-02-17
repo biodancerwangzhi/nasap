@@ -212,10 +212,13 @@
             <tr v-if="lincRNA_gb_count_csv"><td>lincRNA gene body count</td><td> {{ lincRNA_gb_count_csv }}</td></tr>
             <tr v-if="lincRNA_pp_count_csv"><td>lincRNA proximal promoter count</td><td> {{ lincRNA_pp_count_csv }}</td></tr>
             <tr v-if="lincRNA_rpkm_csv"><td>lincRNA rpkm</td><td> {{ lincRNA_rpkm_csv }}</td></tr>
+            <tr v-if="lincRNA_rpm_csv"><td>lincRNA rpm</td><td> {{ lincRNA_rpm_csv }}</td></tr>
             <tr v-if="protein_coding_baseCount_csv"><td>protein coding count</td><td> {{ protein_coding_baseCount_csv }}</td></tr>
             <tr v-if="protein_coding_gb_count_csv"><td>protein coding gb count</td><td> {{ protein_coding_gb_count_csv }}</td></tr>
             <tr v-if="protein_coding_pp_count_csv"><td>protein coding pp count</td><td> {{ protein_coding_pp_count_csv }}</td></tr>
             <tr v-if="protein_coding_rpkm_csv"><td>protein coding rpkm</td><td> {{ protein_coding_rpkm_csv }}</td></tr>
+            <tr v-if="protein_coding_rpm_csv"><td>protein coding rpm</td><td> {{ protein_coding_rpm_csv }}</td></tr>
+            <tr v-if="erna_quant_csv"><td>enhancer RNA log density</td><td> {{ erna_quant_csv }}</td></tr>
           </table>
           <div class="title4 title">Quantitative analysis--2. Abundance estimate</div>
           <div class="card" v-if="img_expressed_genes">

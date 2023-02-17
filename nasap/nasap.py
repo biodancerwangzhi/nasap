@@ -111,7 +111,7 @@ def _check_output(output_root):
       os.removedirs(sub_dir)
 
 
-def server(output_root='./test_output/', forward_bw=None, reverse_bw=None, gtf=None,  cores=1, tf_source=None, tf_filter_nodes=None, enhancer_source=None, enhancer_filter_nodes=None):
+def server(output_root='./test_output/', forward_bw=None, reverse_bw=None, gtf=None,  cores=1, tf_source=None, enhancer_source=None, select_nodes_file=None, express_file=None):
   global global_root
   global_root = output_root
   # logger.info('server--construct output dir')
@@ -158,15 +158,16 @@ def server(output_root='./test_output/', forward_bw=None, reverse_bw=None, gtf=N
   if tf_source:
     _check_para('--tf_source', tf_source, str, isFile=True, required=True, output_root=output_root)
     network_cmd_list.extend( ['--tf_source', tf_source])
-  if tf_filter_nodes:
-    _check_para('--tf_filter_nodes', tf_filter_nodes, str, isFile=True, required=True, output_root=output_root)
-    network_cmd_list.extend( ['--tf_filter_nodes', tf_filter_nodes])
+
   if enhancer_source:
     _check_para('--enhancer_source', enhancer_source, str, isFile=True, required=True, output_root=output_root)
     network_cmd_list.extend( ['--enhancer_source', enhancer_source])
-  if enhancer_filter_nodes:
-    _check_para('--enhancer_filter_nodes', enhancer_filter_nodes, str, isFile=True, required=True, output_root=output_root)
-    network_cmd_list.extend( ['--enhancer_filter_nodes', enhancer_filter_nodes])
+  if select_nodes_file:
+    _check_para('--select_nodes_file', select_nodes_file, str, isFile=True, required=True, output_root=output_root)
+    network_cmd_list.extend( ['--select_nodes_file', select_nodes_file])
+  if express_file:
+    _check_para('--express_file', express_file, str, isFile=True, required=True, output_root=output_root)
+    network_cmd_list.extend( ['--express_file', express_file])
 
   all_steps = [feature_assign_cmd_list, pausing_sites_cmd_list, network_cmd_list, render_cmd_list]
   steps_name = ['feature_assign', 'pausing_sites', 'network_analysis', 'render_output']
@@ -218,12 +219,12 @@ def assessment(output_root='./test_output/', read1=None,  cores=1, read2=None, a
     try:
       scale_factor = float(scale_factor)
     except Exception as e:
-      _write_err('--scale_factor parsed--Failed\n' + str(e) )
+      _write_err('--scale_factor parsed--Failed, scale-factor must be int or float number\n' + str(e) )
 
-  _tracks(output_root=output_root, bam=output_root + 'sam/uniquemapped_sort.bam', scale_factor=scale_factor)
+  _tracks(output_root=output_root, bam=output_root + 'sam/uniquemapped_sort.bam', cores=cores, scale_factor=scale_factor)
   _render_template(output_root=output_root, type='assessment', is_server='No')
 
-def all(output_root='./test_output/', read1=None, bowtie_index=None,  gtf=None,  cores=1, read2=None, adapter1=None, adapter2=None, umi_loc=None, umi_len=None, tf_source=None, tf_filter_nodes=None, enhancer_source=None, enhancer_filter_nodes=None):
+def all(output_root='./test_output/', read1=None, bowtie_index=None,  gtf=None,  cores=1, read2=None, adapter1=None, adapter2=None, umi_loc=None, umi_len=None, tf_source=None, select_nodes_file=None, enhancer_source=None, express_file=None):
   global global_root
   global_root = output_root
   logger.info('all--check installed software')
@@ -232,7 +233,7 @@ def all(output_root='./test_output/', read1=None, bowtie_index=None,  gtf=None, 
   _check_soft( ['fastp', 'bioawk', 'python', 'bowtie2', 'samtools', 'bedtools', 'deeptools'], isPython=False)
   _check_soft( ['pandas', 'pyBigWig', 'numpy', 'scipy', 'networkx','community', 'hvplot'], isPython=True)
   assessment(output_root=output_root, read1=read1,  cores=cores, read2=read2, adapter1=adapter1, adapter2=adapter2, umi_loc=umi_loc, umi_len=umi_len, bowtie_index=bowtie_index, gtf=gtf)
-  server(output_root=output_root, forward_bw=output_root + 'bw/forward.bw', reverse_bw=output_root + 'bw/reverse.bw', gtf=gtf, cores=cores, tf_source=tf_source, tf_filter_nodes=tf_filter_nodes, enhancer_source=enhancer_source, enhancer_filter_nodes=enhancer_filter_nodes )
+  server(output_root=output_root, forward_bw=output_root + 'bw/forward.bw', reverse_bw=output_root + 'bw/reverse.bw', gtf=gtf, cores=cores, tf_source=tf_source, select_nodes_file=select_nodes_file, enhancer_source=enhancer_source, express_file=express_file )
   _render_template(output_root=output_root, type='all', is_server='No')
 
 
@@ -429,7 +430,7 @@ def _align(read1=None, bowtie_index=None, gtf=None, output_root=None, cores=1, r
   log_file.close()
   logger.success(_cur_time()+ 'alignment--Finished. Find the results in ' + output_root)
 
-def _tracks(bam=None, output_root=None, scale_factor=None):
+def _bamCov(bam=None, output_root=None, scale_factor=None, cores=None, five_end=None):
   logger.info('genome_tracks--check installed software')
   _check_soft( ['deeptools'], isPython=False)
 
@@ -443,14 +444,25 @@ def _tracks(bam=None, output_root=None, scale_factor=None):
   _check_para('--bam', bam, str, isFile=True, required=True, output_root=output_root)
   cmd_list.extend(['--bam', bam])
   log_file.write('bam--'+os.path.basename(bam) + '\n' )
-  log_file.write('bam_size--' + str(os.stat(bam).st_size / (1024 * 1024)) + 'Mb\n')
-  # 这里运行时间太长 cores直接写死 40，40是线程
-  # if cores:
-  #   cur_cores = _get_cores(cores)
-  #   cmd_list.extend(['-p', str(cur_cores)])
-  cmd_list.extend(['-p', str(40)])
+  bam_size = os.stat(bam).st_size / (1024 * 1024)
+  log_file.write('bam_size--' + str(bam_size) + 'Mb\n')
+  if cores:
+    cur_cores = _get_cores(cores)
+    cmd_list.extend(['-p', str(cur_cores)])
+  else:
+    # 这里运行时间太长 一开始cores直接写死 40，40是线程 后来发现小文件不合适
+    if bam_size < 100:
+      cmd_list.extend(['-p', str(4)])
+    elif bam_size < 500:
+      cmd_list.extend(['-p', str(8)])
+    elif bam_size < 1000:
+      cmd_list.extend(['-p', str(16)])
+    else:
+      cmd_list.extend(['-p', str(32)])
+
   if scale_factor:
     cmd_list.extend(['--scaleFactor', str(scale_factor)])
+
   cmd_list_forward, cmd_list_reverse = cmd_list.copy(), cmd_list.copy()
   cmd_list_forward.extend(['--filterRNAstrand', 'forward'])
   cmd_list_reverse.extend(['--filterRNAstrand', 'reverse'])
@@ -459,25 +471,122 @@ def _tracks(bam=None, output_root=None, scale_factor=None):
   log_file.write(_cur_time()+ ': generate forward genome track start\n')
   try:
     subprocess.run(' '.join(cmd_list_forward),  shell=True,  check=True)
-    cmd_list_forward[-1] = output_root + 'bw/forward_5_end.bw'
-    cmd_list_forward.extend(['--Offset', '1'])
-    subprocess.run(' '.join(cmd_list_forward),  shell=True,  check=True)
+    if five_end:
+      cmd_list_forward[-1] = output_root + 'bw/forward_5_end.bw'
+      cmd_list_forward.extend(['--Offset', '1'])
+      subprocess.run(' '.join(cmd_list_forward),  shell=True,  check=True)
   except Exception as e:
     _write_err('forward bamCoverage--Failed\n' + str(e) )
 
   log_file.write(_cur_time()+ ': generate reverse genome track start\n')
   try:
     subprocess.run(' '.join(cmd_list_reverse),  shell=True,  check=True)
-    cmd_list_reverse[-1] = output_root + 'bw/reverse_5_end.bw'
-    cmd_list_reverse.extend(['--Offset', '1'])
-    subprocess.run(' '.join(cmd_list_reverse),  shell=True,  check=True)
+    if five_end:
+      cmd_list_reverse[-1] = output_root + 'bw/reverse_5_end.bw'
+      cmd_list_reverse.extend(['--Offset', '1'])
+      subprocess.run(' '.join(cmd_list_reverse),  shell=True,  check=True)
   except Exception as e:
     _write_err('reverse bamCoverage--Failed\n' + str(e) )
 
   log_file.close()
   logger.success(_cur_time()+'genome_tracks--Finished. Find the results in ' + output_root)
 
-def feature_assign(forward_bw=None, reverse_bw=None, gtf=None, output_root=None):
+
+def _genomeCov(bam=None, output_root=None, scale_factor=None, cores=None, five_end=None):
+  # BAM -> BedGraph -> BigWig
+  # 1 software test
+  logger.info('genome_tracks--check installed software')
+  _check_soft(['bedtools'], isPython=False)
+  _check_soft(['samtools'], isPython=False)
+  try:
+    if os.system(self_src + 'ucsc/bedGraphToBigWig') != 0:
+      bg2bw_dir = self_src + 'ucsc/bedGraphToBigWig'
+    else:
+      if os.system('bedGraphToBigWig') != 0:
+        bg2bw_dir = 'bedGraphToBigWig'
+      else:
+        _write_err( 'import %s error.\nyou need to install %s first'%('bedGraphToBigWig', 'bedGraphToBigWig') )
+  except:
+    if os.system('bedGraphToBigWig') != 0:
+      bg2bw_dir = 'bedGraphToBigWig'
+    else:
+      _write_err( 'import %s error.\nyou need to install %s first'%('bedGraphToBigWig', 'bedGraphToBigWig') )
+
+  # 2 bedtools genomecov -ibam filename.bam -bg > filename.bedgraph
+  logger.info('genome_tracks--check parameter and input files')
+  if not output_root.endswith('/'): output_root = output_root + '/'
+  logger.info('genome_tracks--construct output dir')
+  _create_project_dir(output_root)
+  log_file = open(output_root + 'tmp.log', 'a+' )
+
+  cmd_list = ['bedtools', 'genomecov', '-bg']
+  _check_para('--bam', bam, str, isFile=True, required=True, output_root=output_root)
+  cmd_list.extend(['-ibam', bam])
+  log_file.write('bam--'+os.path.basename(bam) + '\n' )
+  bam_size = os.stat(bam).st_size / (1024 * 1024)
+  log_file.write('bam_size--' + str(bam_size) + 'Mb\n')
+  def generate_chr_size(bam):
+    os.system('samtools idxstats %s > %stmp_chr_size.txt'%(bam, output_root) )
+    with open( output_root + 'chr_size.txt', 'w') as f:
+      for ln in open(output_root + 'tmp_chr_size.txt'):
+        if '*' in ln: continue
+        seq_id, seq_len, _, _ = ln.split('\t')
+        f.write(seq_id + '\t' + seq_len + '\n')
+  generate_chr_size(bam)
+  if scale_factor:
+    cmd_list.extend(['-scale', str(scale_factor)])
+
+  cmd_list_forward, cmd_list_reverse = cmd_list.copy(), cmd_list.copy()
+  cmd_list_forward.extend(['-strand', '+'])
+  cmd_list_reverse.extend(['-strand', '-'])
+  forward_bg_file = output_root + 'tmp_forward.bedgraph'
+  reverse_bg_file = output_root + 'tmp_reverse.bedgraph'
+  cmd_list_forward.extend(['| sort -k1,1 -k2,2n', '>', forward_bg_file])
+  cmd_list_reverse.extend(['| sort -k1,1 -k2,2n', '>', reverse_bg_file])
+  log_file.write(_cur_time()+ ': generate forward genome track start\n')
+  # 3 bedGraphToBigWig filename.bedgraph $dm6 filename.bw
+  def bg2bw(bg_file, bw_file):
+    bg2bw_cmd_list =[bg2bw_dir, bg_file, output_root + 'chr_size.txt', output_root + 'bw/' + bw_file]
+    subprocess.run(' '.join(bg2bw_cmd_list),  shell=True,  check=True)
+
+  try:
+    subprocess.run(' '.join(cmd_list_forward),  shell=True,  check=True)
+    bg2bw(forward_bg_file, 'forward.bw')
+    if five_end:
+      forward_bg_file = output_root + 'tmp_forward_5_end.bedgraph'
+      cmd_list_forward[-1] = output_root + forward_bg_file
+      cmd_list_forward.extend(['-5'])
+      subprocess.run(' '.join(cmd_list_forward),  shell=True,  check=True)
+      bg2bw(forward_bg_file, 'forward_5_end.bw')
+  except Exception as e:
+    _write_err('forward bamCoverage--Failed\n' + str(e) )
+
+  log_file.write(_cur_time()+ ': generate reverse genome track start\n')
+  try:
+    subprocess.run(' '.join(cmd_list_reverse),  shell=True,  check=True)
+    bg2bw(reverse_bg_file, 'reverse.bw')
+    if five_end:
+      reverse_bg_file = output_root + 'tmp_reverse_5_end.bedgraph'
+      cmd_list_reverse[-1] = output_root + reverse_bg_file
+      cmd_list_reverse.extend(['-5'])
+      subprocess.run(' '.join(cmd_list_reverse),  shell=True,  check=True)
+      bg2bw(reverse_bg_file, 'reverse_5_end.bw')
+  except Exception as e:
+    _write_err('reverse bamCoverage--Failed\n' + str(e) )
+
+  log_file.close()
+  logger.success(_cur_time()+'genome_tracks--Finished. Find the results in ' + output_root)
+
+
+def _tracks(bam=None, output_root=None, cores=None, scale_factor=None, five_end=None):
+  bam_size = float(os.path.getsize(bam)/1000000)
+  if bam_size < 50:
+    _genomeCov(bam=bam, output_root=output_root, scale_factor=scale_factor,  five_end=five_end)
+  else:
+    _bamCov(bam=bam, output_root=output_root, scale_factor=scale_factor, cores=cores,  five_end=five_end)
+
+
+def feature_assign(forward_bw=None, reverse_bw=None, gtf=None, output_root=None, tss_up=150, tss_down=150, gene_length=2000, rpkm_threshold=0.1):
   global global_root
   global_root = output_root
   if not output_root.endswith('/'): output_root = output_root + '/'
@@ -506,6 +615,29 @@ def feature_assign(forward_bw=None, reverse_bw=None, gtf=None, output_root=None)
 
   cmd_list.extend(['--output_root', output_root])
   log_file.write(_cur_time()+ 'feature assign start\n')
+
+
+  try:
+    tss_up = int(tss_up)
+    cmd_list.extend(['--tss_up', str(tss_up)])
+  except Exception as e:
+    _write_err('--tss_up parsed--Failed, tss_up must be int number\n' + str(e) )
+  try:
+    tss_down = int(tss_down)
+    cmd_list.extend(['--tss_down', str(tss_down)])
+  except Exception as e:
+    _write_err('--tss_down parsed--Failed, tss_down must be int number\n' + str(e) )
+
+  try:
+    gene_length = int(gene_length)
+    cmd_list.extend(['--gene_length', str(gene_length)])
+  except Exception as e:
+    _write_err('--gene_length parsed--Failed, gene_length must be int number\n' + str(e) )
+  try:
+    rpkm_threshold = float(rpkm_threshold)
+    cmd_list.extend(['--rpkm_threshold', str(rpkm_threshold)])
+  except Exception as e:
+    _write_err('--rpkm_threshold parsed--Failed, rpkm_threshold must be int number\n' + str(e) )
 
   try:
     os.system( ' '.join(cmd_list) )
@@ -556,7 +688,7 @@ def pausing_sites(forward_bw=None, reverse_bw=None, output_root=None, cores=1):
 
   _render_template(output_root=output_root, type='pausing', is_server='No')
 
-def network_analysis(tf_source=None, tf_filter_nodes=None, enhancer_source=None, enhancer_filter_nodes=None, output_root=None ):
+def network_analysis(tf_source=None, enhancer_source=None, select_nodes_file=None, express_file=None, output_root=None ):
   global global_root
   global_root = output_root
   if not output_root.endswith('/'): output_root = output_root + '/'
@@ -578,15 +710,15 @@ def network_analysis(tf_source=None, tf_filter_nodes=None, enhancer_source=None,
   if tf_source:
     _check_para('--tf_source', tf_source, str, isFile=True, required=True, output_root=output_root)
     cmd_list.extend(['--tf_source', tf_source])
-  if tf_filter_nodes:
-    _check_para('--tf_filter_nodes', tf_filter_nodes, str, isFile=True, required=True, output_root=output_root)
-    cmd_list.extend(['--tf_filter_nodes', tf_filter_nodes])
+  if select_nodes_file:
+    _check_para('--select_nodes_file', select_nodes_file, str, isFile=True, required=True, output_root=output_root)
+    cmd_list.extend(['--select_nodes_file', select_nodes_file])
   if enhancer_source:
     _check_para('--enhancer_source', enhancer_source, str, isFile=True, required=True, output_root=output_root)
     cmd_list.extend(['--enhancer_source', enhancer_source])
-  if enhancer_filter_nodes:
-    _check_para('--enhancer_filter_nodes', enhancer_filter_nodes, str, isFile=True, required=True, output_root=output_root)
-    cmd_list.extend(['--enhancer_filter_nodes', enhancer_filter_nodes])
+  if express_file:
+    _check_para('--express_file', express_file, str, isFile=True, required=True, output_root=output_root)
+    cmd_list.extend(['--express_file', express_file])
 
   try:
     os.system( ' '.join(cmd_list) )

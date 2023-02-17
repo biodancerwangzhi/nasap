@@ -1,4 +1,4 @@
-import os, fire, re, sys, pickle
+import os, fire, re, sys, math
 # sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))+ '/libs')
 script_dir = os.path.abspath(os.path.join(os.path.abspath(__file__), ".."))
 lib_dir = os.path.abspath(os.path.join(os.path.abspath(__file__), '../../libs') )
@@ -36,6 +36,32 @@ def find_true_tss(chr, left, right, bw, strand):
     max_index = max_index_list[-1]
   return left + max_index
 
+
+def search_truncated_region(arr):
+  window_size = 100
+  step_size = 25
+  read_threshold = 25
+  length_threshold = 800
+  new_shape = ((arr.size - window_size) // step_size + 1, window_size)
+  new_strides = (arr.strides[0] * step_size, arr.strides[0])
+  arr_strided = np.lib.stride_tricks.as_strided(arr, shape=new_shape, strides=new_strides)
+  arr_sum = arr_strided.sum(axis=1)
+  read_num_arr = arr_sum/window_size
+
+  # 获取大于threshold的元素的索引
+  index = np.nonzero(read_num_arr > read_threshold)[0]
+  # 计算索引的差值，找到连续索引的起点和长度
+  ranges = np.split(index, np.where(np.diff(index) != 1)[0]+1)
+  # print( ranges )
+  res = []
+  if ranges:
+    for r in ranges:
+        if len(r) > 0 and len(r) * step_size > length_threshold:
+          res.append( [r[0]*step_size, len(r) * step_size] )
+  return res
+
+
+
 def pausing_index( chr, start, end, strand,  bw, tss_up, tss_down ):
   # 获取 表达的蛋白， lincRNA
   if strand == '+':
@@ -70,10 +96,11 @@ def elongation_index( chr, start, end, strand,  bw ):
     prr = gb/pp
   return prr
 
-def get_attrs(gene_range_dic, forward_bw, reverse_bw, total_bases, tss_up, tss_down):
+def get_attrs(gene_range_dic, forward_bw, reverse_bw, total_bases, tss_up=0, tss_down=150, gene_length=2000, rpkm_threshold=0.1):
   gene_rpkm_dic, gene_baseCount_dic, gene_rpm_dic =  {},{}, {}
   gene_pi_dic, gene_ei_dic = {}, {}
   gene_pp_count_dic, gene_gb_count_dic = {}, {}
+  trunc_gene_list = []
   for strand in ['+', '-']:
     strand_gene_range_dic = gene_range_dic[strand]
     bw = pyBigWig.open( {'+': forward_bw, '-': reverse_bw}[strand])
@@ -84,13 +111,18 @@ def get_attrs(gene_range_dic, forward_bw, reverse_bw, total_bases, tss_up, tss_d
         rpkm = density2rpkm(density, total_bases)
         base_count = int( density * (e - s) )
         rpm = base_count * 1e6 /total_bases
-        if e - s < 2300:
-          pi, prr='gene too short', 'gene too short'
-          continue
+        if rpkm < rpkm_threshold:
+          pi, prr, pp_count, gb_count = 'gene not expressed', 'gene not expressed', 'gene not expressed', 'gene not expressed'
+
+        if e - s < gene_length:
+          pi, prr, pp_count, gb_count='gene too short', 'gene too short', 'gene too short', 'gene too short'
         else:
           pi, pp_count, gb_count = pausing_index(c,s, e, strand, bw, tss_up, tss_down)
-          prr = elongation_index(c,s, e, strand, bw)
-
+          # prr = elongation_index(c,s, e, strand, bw)
+          if pi == 0:
+            prr = 0
+          else:
+            prr = math.log2(1/pi)
       except:
         continue
       gene_rpkm_dic[gene_name] = rpkm
@@ -100,10 +132,29 @@ def get_attrs(gene_range_dic, forward_bw, reverse_bw, total_bases, tss_up, tss_d
       gene_ei_dic[gene_name] = prr
       gene_pp_count_dic[gene_name] = pp_count
       gene_gb_count_dic[gene_name] = gb_count
+
+      try:
+        arr = bw.values(c, s, e)
+        region_list = search_truncated_region(arr)
+        if len(region_list) > 0:
+          for region in region_list:
+            if strand == '+':
+              trunc_gene_left = s+ region[0] -100
+              trunc_gene_right = s + region[0] + region[1]
+            else:
+              trunc_gene_left = s+ region[0]
+              trunc_gene_right = s+ region[0] + region[1] + 100
+
+            density = bw.stats(c, trunc_gene_left, trunc_gene_right)[0]
+            base_count = int( density * (trunc_gene_right - trunc_gene_left) )
+            trunc_gene_list.append([c, str(trunc_gene_left), str(trunc_gene_right), strand, str(base_count)])
+      except:
+        continue
+
     # dic2json(gene_rpkm_dic, rpkm_json_output)
   return gene_rpkm_dic, gene_baseCount_dic, gene_rpm_dic, \
   gene_pi_dic, gene_ei_dic, \
-  gene_pp_count_dic, gene_gb_count_dic
+  gene_pp_count_dic, gene_gb_count_dic, trunc_gene_list
 
 def coding_vs_linc(protein_data, linc_data, output_root):
   protein_num, linc_num = len(protein_data), len(linc_data)
@@ -135,7 +186,7 @@ def coding_vs_linc(protein_data, linc_data, output_root):
   #   pickle.dump(expressed_dist_data, f)
 
 # count, RPKM, PI, EI, Exon/intron density
-def main(gtf, forward_bw, reverse_bw, output_root, tss_up=150, tss_down=150 ):
+def main(gtf, forward_bw, reverse_bw, output_root, tss_up=150, tss_down=150, gene_length=2000, rpkm_threshold=0.1):
   # 这里 多搞两个 参数用 tss_up, tss_down 去定义 pp区域，
   # tes的部分暂时不提，就用tss_right 到 tes 定义gb区域。
   total_bases = get_total_bases(forward_bw, reverse_bw)
@@ -146,7 +197,15 @@ def main(gtf, forward_bw, reverse_bw, output_root, tss_up=150, tss_down=150 ):
 
   gene_rpkm_dic, gene_baseCount_dic, gene_rpm_dic, \
   gene_pi_dic, gene_ei_dic, \
-  gene_pp_count_dic, gene_gb_count_dic = get_attrs(gene_range_dic, forward_bw, reverse_bw, total_bases, tss_up, tss_down)
+  gene_pp_count_dic, gene_gb_count_dic, \
+  trunk_gene_list = get_attrs(gene_range_dic, forward_bw, reverse_bw, total_bases, tss_up, tss_down, gene_length, rpkm_threshold)
+  with open(output_root+'csv/trunc_genes_count.csv', 'w') as f:
+    f.write('\t'.join(['trunc_gene_name', 'chrom', 'start', 'end', 'strand', 'count']) + '\n' )
+    for x in trunk_gene_list:
+      gene_name = x[0] + ':' +  str(x[1]) + '-' + str(x[2])
+      x.insert(0, gene_name)
+      f.write( '\t'.join( x ) + '\n')
+
   # print( list(gene_rpkm_dic.items())[:5] )
 
   attr_list = ['baseCount', 'rpkm', 'rpm', 'pp_count', 'gb_count', 'pi', 'ei']
