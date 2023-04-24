@@ -6,22 +6,23 @@ Quality Assessment and Comprehensive Analyses of Nascent RNA Profiling Datasets
 cat > env.yml <<EOF
 name: nasap_env
 dependencies:
-  - libcurl
-  - scipy
-  - pandas
-  - hvplot
-  - bioconda::deeptools
-  - bioconda::pybigwig
+  - libcurl=7.87.0
+  - scipy=1.5.2
+  - pandas=1.1.5
+  - hvplot=0.7.3
+  - pip=21.2.2
+  - bioconda::deeptools=2.5.7
+  - bioconda::pybigwig=0.3.17
   - bioconda::pysam=0.8.3
-  - bioconda::bioawk
-  - bioconda::bedtools
-  - bioconda::bowtie2
+  - bioconda::bioawk=1.0
+  - bioconda::bedtools=2.30.0
+  - bioconda::bowtie2=2.3.5.1
   - bioconda::fastp=0.22.0
   - bioconda::flash=1.2.11
   - bioconda::fastq-pair=1.0
   - bioconda::samtools=1.13
-  - pip
-    - nasap
+  - pip:
+    - nasap==0.2.10
 EOF
 conda env create -f ./env.yml
 ```
@@ -35,7 +36,7 @@ nasap --help
 
 ## pull a docker mirror and start a container 
 ```bash 
-docker pull -t biodancer/nasap:latest . 
+docker pull biodancer/nasap:latest 
 sudo docker run --rm -it -v `pwd`/data:/tmp -w /tmp biodancer/nasap:latest nasap --help 
 ```
 

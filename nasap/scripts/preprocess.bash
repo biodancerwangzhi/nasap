@@ -361,9 +361,9 @@ echo pct_uninformative_adapter_reads--$pct_uninformative_adapter_reads >> $tmp_v
 
 # 4 Peak_adapter_insertion_size:
 if [ $read2 ]; then
-  flash -q -t 40 --compress-prog=pigz --suffix=gz \
+  flash -q -t 40 --suffix=gz \
   $fq_dir'filter_adapter1.fq.gz' $fq_dir'filter_adapter2.fq.gz' \
-  -o flash -d $fq_dir
+  -o flash -d ${fq_dir%/}
   peak_adapter_insertion_size=$(cat $fq_dir'flash.hist' | sort -k2nr | head -1 | awk '{print $1;}')
   # 5 Degradation_ratio
   # degradation_ratio=$(cat $fq_dir'flash.hist' | awk -F'\t' '{if (match($1, /1[0-9]/)) low+=$2} {if (match($1, /3[0-9]/)) high+=$2} END {print low/high}')
